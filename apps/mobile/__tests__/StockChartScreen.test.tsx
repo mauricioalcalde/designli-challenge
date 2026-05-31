@@ -1,4 +1,5 @@
 import React from 'react';
+import { RefreshControl } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { StocksState } from '../src/application/stocks.store';
 import type { AlertsState } from '../src/application/alerts.store';
@@ -193,5 +194,34 @@ describe('StockChartScreen', () => {
     renderWithTheme(<StockChartScreen />);
 
     expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1W');
+  });
+
+  it('renders RefreshControl for pull-to-refresh', () => {
+    stocksState.chartData = chartPoints;
+
+    renderWithTheme(<StockChartScreen />);
+
+    expect(screen.UNSAFE_getByType(RefreshControl)).toBeTruthy();
+  });
+
+  it('sets RefreshControl refreshing prop based on loading state', () => {
+    stocksState.chartData = chartPoints;
+    stocksState.chartIsLoading = true;
+
+    renderWithTheme(<StockChartScreen />);
+
+    const refreshControl = screen.UNSAFE_getByType(RefreshControl);
+    expect(refreshControl.props.refreshing).toBe(true);
+  });
+
+  it('calls loadChart with current symbol and range on pull-to-refresh', () => {
+    stocksState.chartData = chartPoints;
+    stocksState.chartRange = '1M';
+
+    renderWithTheme(<StockChartScreen />);
+
+    const refreshControl = screen.UNSAFE_getByType(RefreshControl);
+    fireEvent(refreshControl, 'refresh');
+    expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1M');
   });
 });

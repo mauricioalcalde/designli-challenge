@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -92,6 +93,10 @@ export function StockChartScreen() {
     void loadChart(symbol, chartRange);
   };
 
+  const handleRefresh = () => {
+    void loadChart(symbol, chartRange);
+  };
+
   const isLoading = chartIsLoading && chartData.length === 0;
 
   return (
@@ -104,6 +109,13 @@ export function StockChartScreen() {
         },
       ]}
       testID="stock-chart-screen"
+      refreshControl={
+        <RefreshControl
+          refreshing={chartIsLoading}
+          onRefresh={handleRefresh}
+          testID="chart-refresh-control"
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header} testID="stock-chart-symbol-header">
