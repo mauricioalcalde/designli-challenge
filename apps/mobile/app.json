@@ -13,6 +13,6 @@
     "android": {
       "package": "com.designli.challenge"
     },
-    "plugins": ["expo-dev-client", "expo-notifications", "@shopify/react-native-skia"]
+    "plugins": ["expo-dev-client", "expo-notifications"]
   }
 }

@@ -19,6 +19,13 @@ jest.mock('react-native-mmkv', () => ({
   }),
 }));
 
+// ---------------------------------------------------------------------------
+// react-native-gifted-charts mock (pure JS, simple mock)
+// ---------------------------------------------------------------------------
+jest.mock('react-native-gifted-charts', () => ({
+  LineChart: 'LineChart',
+}));
+
 const mockUseStocksStore = jest.fn();
 const mockUseAlertsStore = jest.fn();
 const mockUseRoute = jest.fn();
@@ -37,8 +44,6 @@ jest.mock('@react-navigation/native', () => ({
 function renderWithTheme(ui: React.ReactElement) {
   return render(<ThemeProvider>{ui}</ThemeProvider>);
 }
-
-// victory-native is mocked via jest.config.js moduleNameMapper → __mocks__/victory-native.tsx
 
 describe('StockChartScreen', () => {
   let stocksState: StocksState;
