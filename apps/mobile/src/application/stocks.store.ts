@@ -1,10 +1,11 @@
-import type { StockListing } from '@designli-challenge/shared';
+import type { StockListing, StockChartPoint, ChartRange } from '@designli-challenge/shared';
 import { create } from 'zustand';
 import type { StockSnapshotStorage } from '../domain/stock-snapshot-storage.port';
 import type { StocksRepository } from '../domain/stocks.repository.port';
-import { StocksLoadError } from '../domain/stocks.errors';
+import { StocksLoadError, StockChartError } from '../domain/stocks.errors';
 
 export interface StocksState {
+  // ---- list slice ----
   items: StockListing[];
   isLoading: boolean;
   isRefreshing: boolean;
@@ -13,6 +14,14 @@ export interface StocksState {
   error: string | null;
   load: () => Promise<void>;
   refresh: () => Promise<void>;
+
+  // ---- chart slice ----
+  chartData: StockChartPoint[];
+  chartSymbol: string | null;
+  chartRange: ChartRange;
+  chartIsLoading: boolean;
+  chartError: string | null;
+  loadChart: (symbol: string, range: ChartRange) => Promise<void>;
 }
 
 /**
@@ -57,7 +66,8 @@ export function createStocksStore(
     };
   };
 
-  return create<StocksState>()((set) => ({
+  return create<StocksState>()((set, get) => ({
+    // ---- list slice ----
     items: [],
     isLoading: false,
     isRefreshing: false,
@@ -84,6 +94,37 @@ export function createStocksStore(
         set({ ...syncSuccessState(items), isRefreshing: false });
       } catch (error) {
         set({ ...buildFailureState(error), isRefreshing: false });
+      }
+    },
+
+    // ---- chart slice ----
+    chartData: [],
+    chartSymbol: null,
+    chartRange: '1W',
+    chartIsLoading: false,
+    chartError: null,
+
+    loadChart: async (symbol: string, range: ChartRange) => {
+      set({ chartSymbol: symbol, chartRange: range, chartIsLoading: true, chartError: null });
+
+      try {
+        const data = await stocksRepo.chart(symbol, range);
+
+        // Discard stale responses: only apply if the store's current range
+        // still matches the range this request was sent for.
+        if (get().chartRange !== range || get().chartSymbol !== symbol) {
+          return;
+        }
+
+        set({ chartData: data, chartIsLoading: false, chartError: null });
+      } catch (error) {
+        // Discard stale error responses too
+        if (get().chartRange !== range || get().chartSymbol !== symbol) {
+          return;
+        }
+
+        const chartError = StockChartError.fromUnknown(error);
+        set({ chartData: [], chartIsLoading: false, chartError: chartError.message });
       }
     },
   }));

@@ -17,12 +17,10 @@ const mockUseStocksStore = jest.fn();
 const mockUseConnectivity = jest.fn();
 
 jest.mock('../src/data/container', () => ({
-  useAuthStore: (selector: (state: AuthStoreSnapshot) => unknown) =>
-    mockUseAuthStore(selector),
+  useAuthStore: (selector: (state: AuthStoreSnapshot) => unknown) => mockUseAuthStore(selector),
   useNotificationsStore: (selector: (state: NotificationsState) => unknown) =>
     mockUseNotificationsStore(selector),
-  useStocksStore: (selector: (state: StocksState) => unknown) =>
-    mockUseStocksStore(selector),
+  useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
 }));
 
 jest.mock('../src/presentation/hooks/useConnectivity', () => ({
@@ -37,7 +35,13 @@ jest.mock('@react-navigation/native-stack', () => {
   const React = jest.requireActual('react');
   const { Text, View } = jest.requireActual('react-native');
 
-  const Screen = ({ name, component: Component }: { name: string; component: React.ComponentType }) => (
+  const Screen = ({
+    name,
+    component: Component,
+  }: {
+    name: string;
+    component: React.ComponentType;
+  }) => (
     <View>
       <Text>{name}</Text>
       <Component />
@@ -59,7 +63,12 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   const Screen = () => null;
 
   const Navigator = ({ children }: { children: React.ReactNode }) => {
-    const screens = React.Children.toArray(children).filter(React.isValidElement) as Array<React.ReactElement<{ component: React.ComponentType<{ route: { name: string } }>; name: string }>>;
+    const screens = React.Children.toArray(children).filter(React.isValidElement) as Array<
+      React.ReactElement<{
+        component: React.ComponentType<{ route: { name: string } }>;
+        name: string;
+      }>
+    >;
     const [activeTab, setActiveTab] = React.useState(screens[0]?.props.name);
     const activeScreen = screens.find((child) => child.props.name === activeTab);
 
@@ -135,6 +144,12 @@ describe('auth shell runtime flow', () => {
       error: null,
       load: jest.fn().mockResolvedValue(undefined),
       refresh: jest.fn().mockResolvedValue(undefined),
+      chartData: [],
+      chartSymbol: null,
+      chartRange: '1W',
+      chartIsLoading: false,
+      chartError: null,
+      loadChart: jest.fn().mockResolvedValue(undefined),
     };
     mockUseStocksStore.mockImplementation((selector: (state: StocksState) => unknown) =>
       selector(stocksState),

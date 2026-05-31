@@ -6,8 +6,7 @@ import type { StocksState } from '../src/application/stocks.store';
 const mockUseStocksStore = jest.fn();
 
 jest.mock('../src/data/container', () => ({
-  useStocksStore: (selector: (state: StocksState) => unknown) =>
-    mockUseStocksStore(selector),
+  useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
 }));
 
 describe('StocksScreen', () => {
@@ -23,6 +22,12 @@ describe('StocksScreen', () => {
       error: null,
       load: jest.fn().mockResolvedValue(undefined),
       refresh: jest.fn().mockResolvedValue(undefined),
+      chartData: [],
+      chartSymbol: null,
+      chartRange: '1W',
+      chartIsLoading: false,
+      chartError: null,
+      loadChart: jest.fn().mockResolvedValue(undefined),
     };
 
     mockUseStocksStore.mockImplementation((selector: (snapshot: StocksState) => unknown) =>

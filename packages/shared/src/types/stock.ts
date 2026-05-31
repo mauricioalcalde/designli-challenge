@@ -13,6 +13,8 @@ export interface StockChartPoint {
   close: number;
 }
 
+export type ChartRange = '1D' | '1W' | '1M' | '3M' | '1Y';
+
 export interface StockProviderConfig {
   provider: 'mock' | 'finnhub';
   finnhubApiKey?: string;

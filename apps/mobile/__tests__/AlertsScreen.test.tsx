@@ -8,8 +8,7 @@ const mockUseAlertsStore = jest.fn();
 const mockUseStocksStore = jest.fn();
 
 jest.mock('../src/data/container', () => ({
-  useAlertsStore: (selector: (state: AlertsState) => unknown) =>
-    mockUseAlertsStore(selector),
+  useAlertsStore: (selector: (state: AlertsState) => unknown) => mockUseAlertsStore(selector),
   useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
 }));
 
@@ -39,6 +38,12 @@ describe('AlertsScreen', () => {
       error: null,
       load: jest.fn().mockResolvedValue(undefined),
       refresh: jest.fn().mockResolvedValue(undefined),
+      chartData: [],
+      chartSymbol: null,
+      chartRange: '1W',
+      chartIsLoading: false,
+      chartError: null,
+      loadChart: jest.fn().mockResolvedValue(undefined),
     };
 
     mockUseAlertsStore.mockImplementation((selector: (snapshot: AlertsState) => unknown) =>

@@ -1,7 +1,7 @@
 import type { AxiosInstance } from 'axios';
-import type { StockListing } from '@designli-challenge/shared';
+import type { StockListing, StockChartPoint, ChartRange } from '@designli-challenge/shared';
 import { StocksRepository } from '../domain/stocks.repository.port';
-import { StocksLoadError } from '../domain/stocks.errors';
+import { StocksLoadError, StockChartError } from '../domain/stocks.errors';
 
 /**
  * HTTP implementation of StocksRepository.
@@ -18,6 +18,18 @@ export class StocksApi extends StocksRepository {
       return data;
     } catch (error) {
       throw StocksLoadError.fromUnknown(error);
+    }
+  }
+
+  async chart(symbol: string, range: ChartRange): Promise<StockChartPoint[]> {
+    try {
+      const { data } = await this.client.get<StockChartPoint[]>(
+        `/stocks/${encodeURIComponent(symbol)}/chart`,
+        { params: { range } },
+      );
+      return data;
+    } catch (error) {
+      throw StockChartError.fromUnknown(error);
     }
   }
 }
