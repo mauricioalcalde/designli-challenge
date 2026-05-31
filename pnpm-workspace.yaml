@@ -6,6 +6,7 @@ allowBuilds:
   '@nestjs/core': true
   '@prisma/client': true
   '@prisma/engines': true
+  '@shopify/react-native-skia': true
   bcrypt: true
   esbuild: true
   prisma: true
