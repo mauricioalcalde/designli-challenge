@@ -29,6 +29,8 @@ jest.mock('../src/presentation/hooks/useConnectivity', () => ({
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
+  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+  useRoute: () => ({ params: {} }),
 }));
 
 jest.mock('@react-navigation/native-stack', () => {

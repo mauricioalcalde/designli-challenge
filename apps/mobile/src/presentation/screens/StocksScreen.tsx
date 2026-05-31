@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStocksStore } from '../../data/container';
 
 function formatPrice(value: number): string {
@@ -23,7 +25,13 @@ function formatSnapshotTimestamp(value: string): string {
   return new Date(value).toLocaleString();
 }
 
+export type StocksStackParamList = {
+  StocksList: undefined;
+  StockChart: { symbol: string };
+};
+
 export function StocksScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<StocksStackParamList>>();
   const items = useStocksStore((state) => state.items);
   const isLoading = useStocksStore((state) => state.isLoading);
   const isRefreshing = useStocksStore((state) => state.isRefreshing);
@@ -64,13 +72,8 @@ export function StocksScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={[
-        styles.content,
-        items.length === 0 && styles.centeredContent,
-      ]}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
-      }
+      contentContainerStyle={[styles.content, items.length === 0 && styles.centeredContent]}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />}
       testID="stocks-scroll"
     >
       <Text style={styles.title}>Stocks</Text>
@@ -94,7 +97,13 @@ export function StocksScreen() {
       ) : (
         <View style={styles.list} testID="stocks-list-state">
           {items.map((item) => (
-            <View key={item.symbol} style={styles.row} testID={`stocks-row-${item.symbol}`}>
+            <TouchableOpacity
+              key={item.symbol}
+              style={styles.row}
+              testID={`stocks-row-${item.symbol}`}
+              onPress={() => navigation.navigate('StockChart', { symbol: item.symbol })}
+              activeOpacity={0.7}
+            >
               <View style={styles.rowCopy}>
                 <Text style={styles.symbol}>{item.symbol}</Text>
                 <Text style={styles.name}>{item.name}</Text>
@@ -110,7 +119,7 @@ export function StocksScreen() {
                   {formatChangePercent(item.changePercent)}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}

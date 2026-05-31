@@ -4,9 +4,14 @@ import { StocksScreen } from '../src/presentation/screens/StocksScreen';
 import type { StocksState } from '../src/application/stocks.store';
 
 const mockUseStocksStore = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../src/data/container', () => ({
   useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
+}));
+
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: mockNavigate }),
 }));
 
 describe('StocksScreen', () => {
@@ -124,5 +129,21 @@ describe('StocksScreen', () => {
     expect(screen.getByText('Showing your last saved stocks snapshot.')).toBeTruthy();
     expect(screen.getByText(/Last updated/)).toBeTruthy();
     expect(screen.queryByText('No internet connection')).toBeNull();
+  });
+
+  it('navigates to StockChart on stock row tap with symbol param', () => {
+    state.items = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        currentPrice: 212.45,
+        changePercent: 1.23,
+      },
+    ];
+
+    render(<StocksScreen />);
+
+    fireEvent.press(screen.getByTestId('stocks-row-AAPL'));
+    expect(mockNavigate).toHaveBeenCalledWith('StockChart', { symbol: 'AAPL' });
   });
 });

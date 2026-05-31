@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AppNavigator } from '../src/presentation/navigation/AppNavigator';
+import type { AlertsState } from '../src/application/alerts.store';
 import type { NotificationsState } from '../src/application/notifications.store';
 import type { StocksState } from '../src/application/stocks.store';
 
@@ -12,12 +13,14 @@ type AuthStoreSnapshot = {
 };
 
 const mockUseAuthStore = jest.fn();
+const mockUseAlertsStore = jest.fn();
 const mockUseNotificationsStore = jest.fn();
 const mockUseStocksStore = jest.fn();
 const mockUseConnectivity = jest.fn();
 
 jest.mock('../src/data/container', () => ({
   useAuthStore: (selector: (state: AuthStoreSnapshot) => unknown) => mockUseAuthStore(selector),
+  useAlertsStore: (selector: (state: AlertsState) => unknown) => mockUseAlertsStore(selector),
   useNotificationsStore: (selector: (state: NotificationsState) => unknown) =>
     mockUseNotificationsStore(selector),
   useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
@@ -29,6 +32,8 @@ jest.mock('../src/presentation/hooks/useConnectivity', () => ({
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
+  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+  useRoute: () => ({ params: {} }),
 }));
 
 jest.mock('@react-navigation/native-stack', () => {
@@ -127,6 +132,21 @@ describe('auth shell runtime flow', () => {
     };
     mockUseNotificationsStore.mockImplementation(
       (selector: (state: NotificationsState) => unknown) => selector(notificationsState),
+    );
+    const alertsState: AlertsState = {
+      items: [],
+      isLoading: false,
+      isSubmitting: false,
+      deletingIds: [],
+      error: null,
+      submitError: null,
+      deleteErrors: {},
+      load: jest.fn().mockResolvedValue(undefined),
+      create: jest.fn().mockResolvedValue(true),
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockUseAlertsStore.mockImplementation((selector: (state: AlertsState) => unknown) =>
+      selector(alertsState),
     );
     stocksState = {
       items: [
