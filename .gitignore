@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Husky
+.husky/_/
+
+# Expo
+.expo/
+android/
+ios/

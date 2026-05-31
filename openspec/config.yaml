@@ -1,0 +1,60 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Project: designli-challenge
+  Stack: GREENFIELD — no code detected yet.
+  Intended: React Native (mobile client) + Node.js (backend API) — full-stack challenge solution.
+  Architecture: SOLID principles, Clean/Hexagonal Architecture, Screaming Architecture, atomic design.
+  Testing: TDD expected but not yet configured (no test runner detected).
+  Style: Conventional Commits, work-unit commits, chained PRs for >400-line changes.
+  Workflow: SDD-driven (Spec-driven development), agentic but human-directed.
+  Docs: Cognitive-load-reduced, progressive disclosure.
+
+strict_tdd: false
+
+testing:
+  runner: none
+  layers:
+    unit: false
+    integration: false
+    e2e: false
+  coverage: false
+  quality:
+    linter: false
+    type_checker: false
+    formatter: false
+  notes: >
+    No testing infrastructure exists yet. Bootstrap gaps:
+    - No package.json/manifest detected
+    - No test runner configured
+    - No linter/formatter setup
+    - No CI pipeline
+    strict_tdd set to false because no test runner exists.
+    Once a test runner is added, strict_tdd SHOULD be set to true.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Reference the relevant Clean Architecture layer (domain, application, infrastructure, presentation)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Tag specs with domain layer
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale (ADR)
+    - Enforce layer boundaries: domain MUST NOT depend on infrastructure
+  tasks:
+    - Group by architectural layer, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Map each task to test-first step when strict_tdd is enabled
+  apply:
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

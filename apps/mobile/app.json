@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Designli Challenge",
+    "slug": "designli-challenge",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.designli.challenge"
+    },
+    "android": {
+      "package": "com.designli.challenge"
+    },
+    "plugins": ["expo-dev-client"]
+  }
+}
