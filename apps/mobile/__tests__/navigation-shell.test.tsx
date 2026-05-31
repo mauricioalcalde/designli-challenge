@@ -107,12 +107,12 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   };
 });
 
-jest.mock('../src/presentation/screens/LoginScreen', () => {
+jest.mock('../src/presentation/screens/AuthScreen', () => {
   const React = jest.requireActual('react');
   const { Text } = jest.requireActual('react-native');
 
   return {
-    LoginScreen: () => React.createElement(Text, null, 'Login screen content'),
+    AuthScreen: () => React.createElement(Text, null, 'Auth screen content'),
   };
 });
 
@@ -208,19 +208,19 @@ describe('navigation shell', () => {
     jest.clearAllMocks();
   });
 
-  it('renders only Login inside AuthStack', () => {
+  it('renders only Auth inside AuthStack', () => {
     render(<AuthStack />);
 
-    expect(screen.getByTestId('stack-screen-Login')).toBeTruthy();
+    expect(screen.getByTestId('stack-screen-Auth')).toBeTruthy();
     expect(screen.queryByTestId('stack-screen-Stocks')).toBeNull();
-    expect(screen.getByText('Login screen content')).toBeTruthy();
+    expect(screen.getByText('Auth screen content')).toBeTruthy();
   });
 
   it('renders AuthStack when the user is unauthenticated', () => {
     render(<AppNavigator />);
 
-    expect(screen.getByText('Login')).toBeTruthy();
-    expect(screen.getByText('Login screen content')).toBeTruthy();
+    expect(screen.getByText('Auth')).toBeTruthy();
+    expect(screen.getByText('Auth screen content')).toBeTruthy();
     expect(screen.queryByText('Stocks')).toBeNull();
   });
 
@@ -234,18 +234,18 @@ describe('navigation shell', () => {
     expect(screen.getByText('Alerts')).toBeTruthy();
     expect(screen.getByText('Notifications')).toBeTruthy();
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
-    expect(screen.queryByText('Login screen content')).toBeNull();
+    expect(screen.queryByText('Auth screen content')).toBeNull();
   });
 
   it('switches from AuthStack to MainTabs when auth state changes', () => {
     const { rerender } = render(<AppNavigator />);
 
-    expect(screen.getByText('Login screen content')).toBeTruthy();
+    expect(screen.getByText('Auth screen content')).toBeTruthy();
 
     authState.isAuthenticated = true;
     rerender(<AppNavigator />);
 
-    expect(screen.queryByText('Login screen content')).toBeNull();
+    expect(screen.queryByText('Auth screen content')).toBeNull();
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
   });
 

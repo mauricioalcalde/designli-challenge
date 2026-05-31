@@ -8,6 +8,7 @@ export interface AuthState {
   error: string | null;
   bootstrap: () => void;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -17,10 +18,7 @@ export interface AuthState {
  * The 401 interceptor in api-client calls `onLoggedOut`,
  * which container wires to `store.getState().logout()`.
  */
-export function createAuthStore(
-  authRepo: AuthRepository,
-  tokenStorage: TokenStorage,
-) {
+export function createAuthStore(authRepo: AuthRepository, tokenStorage: TokenStorage) {
   return create<AuthState>()((set) => ({
     isAuthenticated: false,
     isLoading: false,
@@ -42,8 +40,19 @@ export function createAuthStore(
         tokenStorage.set(response.token);
         set({ isAuthenticated: true, isLoading: false });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Login failed';
+        const message = err instanceof Error ? err.message : 'Login failed';
+        set({ error: message, isLoading: false });
+      }
+    },
+
+    register: async (email: string, password: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        const response = await authRepo.register({ email, password });
+        tokenStorage.set(response.token);
+        set({ isAuthenticated: true, isLoading: false });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Registration failed';
         set({ error: message, isLoading: false });
       }
     },

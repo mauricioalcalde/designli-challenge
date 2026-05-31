@@ -194,13 +194,13 @@ describe('auth shell runtime flow', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input-text-field'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input-text-field'), 'securePass1');
-    fireEvent.press(screen.getByTestId('login-button'));
+    fireEvent.press(screen.getByTestId('auth-submit-button'));
 
     expect(authState.login).toHaveBeenCalledWith('user@example.com', 'securePass1');
 
     rerender(<AppNavigator />);
 
-    expect(screen.queryByTestId('login-button')).toBeNull();
+    expect(screen.queryByTestId('auth-submit-button')).toBeNull();
     expect(screen.getAllByText('Stocks').length).toBeGreaterThan(0);
     expect(screen.getByText('Alerts')).toBeTruthy();
     expect(screen.getByText('Notifications')).toBeTruthy();
@@ -217,7 +217,7 @@ describe('auth shell runtime flow', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input-text-field'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input-text-field'), 'securePass1');
-    fireEvent.press(screen.getByTestId('login-button'));
+    fireEvent.press(screen.getByTestId('auth-submit-button'));
 
     rerender(<AppNavigator />);
 
@@ -235,7 +235,7 @@ describe('auth shell runtime flow', () => {
     authState.isAuthenticated = false;
     rerender(<AppNavigator />);
 
-    expect(screen.getByText('Login')).toBeTruthy();
+    expect(screen.getByText('Auth')).toBeTruthy();
     expect(screen.queryByText('Apple Inc.')).toBeNull();
     expect(screen.queryByText('Alerts')).toBeNull();
     expect(screen.queryByText('Notifications')).toBeNull();

@@ -1,16 +1,16 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LoginScreen } from '../screens/LoginScreen';
+import { AuthScreen } from '../screens/AuthScreen';
 
 const Stack = createNativeStackNavigator();
 
 /**
  * Auth stack — renders when `isAuthenticated` is false.
- * Contains exactly one screen: Login.
+ * Contains exactly one screen: Auth.
  */
 export function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Auth" component={AuthScreen} />
     </Stack.Navigator>
   );
 }

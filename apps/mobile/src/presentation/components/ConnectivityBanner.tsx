@@ -4,7 +4,7 @@ import { useConnectivity } from '../hooks/useConnectivity';
 /**
  * Non-dismissible "No internet connection" banner.
  * Renders only when the device is offline — auto-hides on reconnect.
- * Displayed on the auth screen (LoginScreen includes it).
+ * Displayed on the auth screen (AuthScreen includes it).
  */
 export function ConnectivityBanner() {
   const isConnected = useConnectivity();
