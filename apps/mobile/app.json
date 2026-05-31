@@ -4,7 +4,7 @@
     "slug": "designli-challenge",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -13,6 +13,6 @@
     "android": {
       "package": "com.designli.challenge"
     },
-    "plugins": ["expo-dev-client"]
+    "plugins": ["expo-dev-client", "expo-notifications", "@shopify/react-native-skia"]
   }
 }
