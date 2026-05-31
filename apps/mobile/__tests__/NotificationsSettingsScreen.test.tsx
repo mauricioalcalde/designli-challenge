@@ -1,7 +1,19 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { NotificationsSettingsScreen } from '../src/presentation/screens/NotificationsSettingsScreen';
+import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import type { NotificationsState } from '../src/application/notifications.store';
+
+// ---------------------------------------------------------------------------
+// MMKV mock
+// ---------------------------------------------------------------------------
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
 
 const mockUseNotificationsStore = jest.fn();
 
@@ -9,6 +21,10 @@ jest.mock('../src/data/container', () => ({
   useNotificationsStore: (selector: (state: NotificationsState) => unknown) =>
     mockUseNotificationsStore(selector),
 }));
+
+function renderWithTheme(ui: React.ReactElement) {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+}
 
 describe('NotificationsSettingsScreen', () => {
   let state: NotificationsState;
@@ -26,8 +42,8 @@ describe('NotificationsSettingsScreen', () => {
       requestPermissionAndRegister: jest.fn().mockResolvedValue(true),
     };
 
-    mockUseNotificationsStore.mockImplementation((selector: (snapshot: NotificationsState) => unknown) =>
-      selector(state),
+    mockUseNotificationsStore.mockImplementation(
+      (selector: (snapshot: NotificationsState) => unknown) => selector(state),
     );
   });
 
@@ -36,28 +52,29 @@ describe('NotificationsSettingsScreen', () => {
   });
 
   it('shows a loading state before readiness resolves', () => {
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
     expect(screen.getByTestId('notifications-loading-state')).toBeTruthy();
-    expect(screen.getByText('Checking notification readiness...')).toBeTruthy();
   });
 
   it('shows unsupported guidance when the runtime is unavailable', () => {
     state.permissionStatus = 'unsupported';
 
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
     expect(screen.getByTestId('notifications-unsupported-state')).toBeTruthy();
     expect(screen.getByText('Notifications unavailable')).toBeTruthy();
     expect(
-      screen.getByText('Use a native iOS or Android development build on a supported device to continue.'),
+      screen.getByText(
+        'Use a native iOS or Android development build on a supported device to continue.',
+      ),
     ).toBeTruthy();
   });
 
   it('shows denied guidance and keeps the primary action visible', () => {
     state.permissionStatus = 'denied';
 
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
     expect(screen.getByTestId('notifications-denied-state')).toBeTruthy();
     expect(screen.getByTestId('notifications-primary-action')).toBeTruthy();
@@ -68,7 +85,7 @@ describe('NotificationsSettingsScreen', () => {
     state.tokenStatus = 'error';
     state.error = 'Unauthorized';
 
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
     expect(screen.getByTestId('notifications-error-state')).toBeTruthy();
     expect(screen.getByText('Unauthorized')).toBeTruthy();
@@ -79,7 +96,7 @@ describe('NotificationsSettingsScreen', () => {
     state.tokenStatus = 'registered';
     state.lastRegisteredAt = '2026-05-29T18:45:00.000Z';
 
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
     expect(screen.getByTestId('notifications-registered-state')).toBeTruthy();
     expect(screen.getByText('Device registered')).toBeTruthy();
@@ -90,15 +107,17 @@ describe('NotificationsSettingsScreen', () => {
     state.isRegistering = true;
     state.tokenStatus = 'registering';
 
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
-    expect(screen.getByTestId('notifications-primary-action').props.accessibilityState.disabled).toBe(true);
+    expect(
+      screen.getByTestId('notifications-primary-action').props.accessibilityState.disabled,
+    ).toBe(true);
   });
 
   it('calls the store registration action when the CTA is pressed', async () => {
     state.permissionStatus = 'denied';
 
-    render(<NotificationsSettingsScreen />);
+    renderWithTheme(<NotificationsSettingsScreen />);
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('notifications-primary-action'));

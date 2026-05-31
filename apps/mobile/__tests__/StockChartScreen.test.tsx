@@ -4,8 +4,19 @@ import type { StocksState } from '../src/application/stocks.store';
 import type { AlertsState } from '../src/application/alerts.store';
 import type { StockChartPoint } from '@designli-challenge/shared';
 
-// We import the component — it does not exist yet (RED).
 import { StockChartScreen } from '../src/presentation/screens/StockChartScreen';
+import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
+
+// ---------------------------------------------------------------------------
+// MMKV mock
+// ---------------------------------------------------------------------------
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
 
 const mockUseStocksStore = jest.fn();
 const mockUseAlertsStore = jest.fn();
@@ -21,6 +32,10 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => mockUseRoute(),
   useNavigation: () => mockUseNavigation(),
 }));
+
+function renderWithTheme(ui: React.ReactElement) {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+}
 
 // victory-native is mocked via jest.config.js moduleNameMapper → __mocks__/victory-native.tsx
 
@@ -106,7 +121,7 @@ describe('StockChartScreen', () => {
     stocksState.chartData = chartPoints;
     stocksState.chartSymbol = 'AAPL';
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-screen')).toBeTruthy();
     expect(screen.getByTestId('stock-chart-symbol-header')).toBeTruthy();
@@ -116,7 +131,7 @@ describe('StockChartScreen', () => {
     stocksState.chartData = chartPoints;
     stocksState.chartSymbol = 'AAPL';
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByText('AAPL')).toBeTruthy();
   });
@@ -124,7 +139,7 @@ describe('StockChartScreen', () => {
   it('renders timeframe selector pills', () => {
     stocksState.chartData = chartPoints;
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('chart-timeframe-1D')).toBeTruthy();
     expect(screen.getByTestId('chart-timeframe-1W')).toBeTruthy();
@@ -137,7 +152,7 @@ describe('StockChartScreen', () => {
     stocksState.chartData = chartPoints;
     stocksState.chartSymbol = 'AAPL';
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     fireEvent.press(screen.getByTestId('chart-timeframe-1M'));
     expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1M');
@@ -146,7 +161,7 @@ describe('StockChartScreen', () => {
   it('shows loading state when chart data is being fetched', () => {
     stocksState.chartIsLoading = true;
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-loading')).toBeTruthy();
   });
@@ -156,7 +171,7 @@ describe('StockChartScreen', () => {
     stocksState.chartSymbol = 'AAPL';
     stocksState.chartRange = '1W';
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-error')).toBeTruthy();
     expect(screen.getByText('Network error')).toBeTruthy();
@@ -168,14 +183,14 @@ describe('StockChartScreen', () => {
   it('shows empty state when chart data is an empty array', () => {
     stocksState.chartSymbol = 'AAPL';
 
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-empty')).toBeTruthy();
     expect(screen.getByText('No chart data available')).toBeTruthy();
   });
 
   it('triggers loadChart on mount with default 1W range', () => {
-    render(<StockChartScreen />);
+    renderWithTheme(<StockChartScreen />);
 
     expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1W');
   });

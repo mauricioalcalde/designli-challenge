@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { AlertDirection } from '@designli-challenge/shared';
 import { useAlertsStore, useStocksStore } from '../../data/container';
+import { Badge } from '../components/Badge';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { Input } from '../components/Input';
+import { Skeleton } from '../components/Skeleton';
+import { useTheme } from '../theme/useTheme';
 
 interface FieldErrors {
   symbol?: string;
@@ -42,6 +41,8 @@ export function AlertsScreen() {
   const remove = useAlertsStore((state) => state.remove);
   const stocks = useStocksStore((state) => state.items);
 
+  const { tokens } = useTheme();
+
   const suggestions = useMemo(() => {
     const normalizedSymbol = symbol.trim().toUpperCase();
 
@@ -50,8 +51,10 @@ export function AlertsScreen() {
         if (!normalizedSymbol) {
           return true;
         }
-
-        return stock.symbol.includes(normalizedSymbol) || stock.name.toUpperCase().includes(normalizedSymbol);
+        return (
+          stock.symbol.includes(normalizedSymbol) ||
+          stock.name.toUpperCase().includes(normalizedSymbol)
+        );
       })
       .slice(0, 4);
   }, [stocks, symbol]);
@@ -91,27 +94,70 @@ export function AlertsScreen() {
     }
   }
 
+  // ---- Loading state: show skeleton placeholders ----
   if (isLoading && items.length === 0) {
     return (
-      <View style={styles.centered} testID="alerts-loading-state">
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.helperText}>Loading alerts...</Text>
+      <View
+        style={[styles.centered, { backgroundColor: tokens.colors.background }]}
+        testID="alerts-loading-state"
+      >
+        <Text
+          style={[
+            styles.title,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.h2.fontSize,
+              fontWeight: tokens.typography.h2.fontWeight,
+            },
+          ]}
+        >
+          Alerts
+        </Text>
+        <Skeleton.Card width={320} height={200} testID="alerts-skeleton-form" />
+        <View style={{ height: 16 }} />
+        <Skeleton.Line width={280} height={14} />
+        <View style={{ height: 8 }} />
+        <Skeleton.Line width={240} height={14} />
       </View>
     );
   }
 
+  // ---- Error state (no items to show) ----
   if (error && items.length === 0) {
     return (
-      <View style={styles.centered} testID="alerts-error-state">
-        <Text style={styles.title}>Alerts</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => void load()}
-          testID="alerts-retry-button"
+      <View
+        style={[styles.centered, { backgroundColor: tokens.colors.background }]}
+        testID="alerts-error-state"
+      >
+        <Text
+          style={[
+            styles.title,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.h2.fontSize,
+              fontWeight: tokens.typography.h2.fontWeight,
+            },
+          ]}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+          Alerts
+        </Text>
+        <Text
+          style={[
+            styles.errorText,
+            {
+              color: tokens.colors.error,
+              fontSize: tokens.typography.body.fontSize,
+            },
+          ]}
+        >
+          {error}
+        </Text>
+        <Button
+          title="Retry"
+          onPress={() => void load()}
+          variant="primary"
+          testID="alerts-retry-button"
+        />
       </View>
     );
   }
@@ -120,33 +166,57 @@ export function AlertsScreen() {
     <ScrollView
       contentContainerStyle={[
         styles.content,
+        { backgroundColor: tokens.colors.background },
         items.length === 0 && styles.centeredContent,
       ]}
       testID="alerts-scroll"
     >
-      <Text style={styles.title}>Alerts</Text>
+      <Text
+        style={[
+          styles.title,
+          {
+            color: tokens.colors.text,
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+          },
+        ]}
+      >
+        Alerts
+      </Text>
 
-      <View style={styles.formCard} testID="alerts-create-form">
-        <Text style={styles.sectionTitle}>Create alert</Text>
+      {/* Create alert form */}
+      <Card testID="alerts-create-form">
+        <Text
+          style={[
+            styles.sectionTitle,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.h4.fontSize,
+              fontWeight: tokens.typography.h4.fontWeight,
+            },
+          ]}
+        >
+          Create alert
+        </Text>
 
-        <TextInput
-          autoCapitalize="characters"
-          autoCorrect={false}
-          editable={!isSubmitting}
+        <Input
+          label="Symbol"
+          placeholder="Symbol"
+          value={symbol}
           onChangeText={(value) => {
             setSymbol(value);
             if (fieldErrors.symbol) {
               setFieldErrors((current) => ({ ...current, symbol: undefined }));
             }
           }}
-          placeholder="Symbol"
-          style={[styles.input, fieldErrors.symbol && styles.inputError]}
+          error={fieldErrors.symbol}
+          disabled={isSubmitting}
+          autoCapitalize="characters"
           testID="alerts-symbol-input"
-          value={symbol}
         />
-        {fieldErrors.symbol ? <Text style={styles.fieldError}>{fieldErrors.symbol}</Text> : null}
 
-        {suggestions.length > 0 ? (
+        {/* Stock suggestions */}
+        {suggestions.length > 0 && (
           <View style={styles.suggestions} testID="alerts-symbol-suggestions">
             {suggestions.map((stock) => (
               <TouchableOpacity
@@ -155,83 +225,105 @@ export function AlertsScreen() {
                 onPress={() => {
                   setSymbol(stock.symbol);
                   if (fieldErrors.symbol) {
-                    setFieldErrors((current) => ({ ...current, symbol: undefined }));
+                    setFieldErrors((current) => ({
+                      ...current,
+                      symbol: undefined,
+                    }));
                   }
                 }}
-                style={styles.suggestionChip}
                 testID={`alerts-suggestion-${stock.symbol}`}
               >
-                <Text style={styles.suggestionText}>{stock.symbol}</Text>
+                <Badge text={stock.symbol} variant="info" />
               </TouchableOpacity>
             ))}
           </View>
-        ) : null}
+        )}
 
-        <TextInput
-          editable={!isSubmitting}
-          keyboardType="numeric"
+        <View style={{ height: 12 }} />
+
+        <Input
+          label="Threshold"
+          placeholder="Threshold"
+          value={threshold}
           onChangeText={(value) => {
             setThreshold(value);
             if (fieldErrors.threshold) {
-              setFieldErrors((current) => ({ ...current, threshold: undefined }));
+              setFieldErrors((current) => ({
+                ...current,
+                threshold: undefined,
+              }));
             }
           }}
-          placeholder="Threshold"
-          style={[styles.input, fieldErrors.threshold && styles.inputError]}
+          error={fieldErrors.threshold}
+          disabled={isSubmitting}
+          keyboardType="numeric"
           testID="alerts-threshold-input"
-          value={threshold}
         />
-        {fieldErrors.threshold ? (
-          <Text style={styles.fieldError}>{fieldErrors.threshold}</Text>
-        ) : null}
 
+        {/* Direction toggle */}
+        <Text
+          style={[
+            styles.directionLabel,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.caption.fontSize,
+              fontWeight: '600',
+            },
+          ]}
+        >
+          Direction
+        </Text>
         <View style={styles.directionRow}>
           {(['above', 'below'] as const).map((value) => {
             const isActive = direction === value;
 
             return (
-              <TouchableOpacity
-                key={value}
-                disabled={isSubmitting}
-                onPress={() => setDirection(value)}
-                style={[styles.directionButton, isActive && styles.directionButtonActive]}
-                testID={`alerts-direction-${value}`}
-              >
-                <Text
-                  style={[styles.directionButtonText, isActive && styles.directionButtonTextActive]}
-                >
-                  {formatDirection(value)}
-                </Text>
-              </TouchableOpacity>
+              <View key={value} style={{ flex: 1 }}>
+                <Button
+                  title={formatDirection(value)}
+                  variant={isActive ? 'primary' : 'secondary'}
+                  onPress={() => setDirection(value)}
+                  disabled={isSubmitting}
+                  testID={`alerts-direction-${value}`}
+                />
+              </View>
             );
           })}
         </View>
 
-        {submitError ? (
-          <Text style={styles.inlineError} testID="alerts-submit-error">
+        {submitError && (
+          <Text
+            style={[
+              styles.inlineError,
+              {
+                color: tokens.colors.error,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+            testID="alerts-submit-error"
+          >
             {submitError}
           </Text>
-        ) : null}
+        )}
 
-        <TouchableOpacity
-          disabled={isSubmitting}
-          onPress={() => void handleCreate()}
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          testID="alerts-submit-button"
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.submitButtonText}>Create alert</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {items.length === 0 ? (
-        <View style={styles.emptyState} testID="alerts-empty-state">
-          <Text style={styles.emptyTitle}>No alerts yet</Text>
-          <Text style={styles.helperText}>Create your first alert above.</Text>
+        <View style={styles.submitWrapper}>
+          <Button
+            title="Create alert"
+            onPress={() => void handleCreate()}
+            loading={isSubmitting}
+            disabled={isSubmitting}
+            testID="alerts-submit-button"
+          />
         </View>
+      </Card>
+
+      {/* Alert list or empty state */}
+      {items.length === 0 ? (
+        <EmptyState
+          title="No alerts yet"
+          message="Create your first alert above."
+          testID="alerts-empty-state"
+        />
       ) : (
         <View style={styles.list} testID="alerts-list-state">
           {items.map((item) => {
@@ -239,32 +331,59 @@ export function AlertsScreen() {
             const deleteError = deleteErrors[item.id];
 
             return (
-              <View key={item.id} style={styles.card} testID={`alerts-row-${item.id}`}>
+              <Card key={item.id} testID={`alerts-row-${item.id}`}>
                 <View style={styles.rowHeader}>
                   <View style={styles.rowCopy}>
-                    <Text style={styles.symbol}>{item.symbol}</Text>
-                    <Text style={styles.threshold}>
+                    <Text
+                      style={[
+                        styles.symbol,
+                        {
+                          color: tokens.colors.text,
+                          fontSize: tokens.typography.body.fontSize,
+                          fontWeight: '700',
+                        },
+                      ]}
+                    >
+                      {item.symbol}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.threshold,
+                        {
+                          color: tokens.colors.textSecondary,
+                          fontSize: tokens.typography.caption.fontSize,
+                        },
+                      ]}
+                    >
                       {formatDirection(item.direction)} {formatThreshold(item.threshold)}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    disabled={isDeleting}
-                    onPress={() => void remove(item.id)}
-                    style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
-                    testID={`alerts-delete-button-${item.id}`}
-                  >
-                    <Text style={styles.deleteButtonText}>
-                      {isDeleting ? 'Deleting...' : 'Delete'}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.deleteWrapper}>
+                    <Button
+                      title={isDeleting ? 'Deleting...' : 'Delete'}
+                      variant="outline"
+                      onPress={() => void remove(item.id)}
+                      disabled={isDeleting}
+                      testID={`alerts-delete-button-${item.id}`}
+                    />
+                  </View>
                 </View>
 
-                {deleteError ? (
-                  <Text style={styles.deleteError} testID={`alerts-delete-error-${item.id}`}>
+                {deleteError && (
+                  <Text
+                    style={[
+                      styles.deleteError,
+                      {
+                        color: tokens.colors.error,
+                        fontSize: tokens.typography.caption.fontSize,
+                      },
+                    ]}
+                    testID={`alerts-delete-error-${item.id}`}
+                  >
                     {deleteError}
                   </Text>
-                ) : null}
-              </View>
+                )}
+              </Card>
             );
           })}
         </View>
@@ -279,153 +398,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
   },
   centeredContent: {
     flexGrow: 1,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111111',
     marginBottom: 16,
-  },
-  helperText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
   },
   errorText: {
-    fontSize: 16,
-    color: '#C62828',
     textAlign: 'center',
     marginBottom: 16,
   },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyState: {
-    alignItems: 'center',
-  },
-  formCard: {
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#F5F7FA',
-  },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111111',
     marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CCCCCC',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  inputError: {
-    borderColor: '#C62828',
-  },
-  fieldError: {
-    color: '#C62828',
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 12,
-    marginLeft: 4,
   },
   suggestions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
-    marginBottom: 12,
   },
-  suggestionChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#E4ECF7',
-  },
-  suggestionText: {
-    color: '#164B87',
-    fontWeight: '600',
+  directionLabel: {
+    marginTop: 12,
+    marginBottom: 8,
   },
   directionRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 12,
     marginBottom: 12,
-  },
-  directionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#B8C4D4',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  directionButtonActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E8F2FF',
-  },
-  directionButtonText: {
-    color: '#4A5568',
-    fontWeight: '600',
-  },
-  directionButtonTextActive: {
-    color: '#007AFF',
   },
   inlineError: {
-    fontSize: 14,
-    color: '#C62828',
     marginBottom: 12,
   },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111111',
+  submitWrapper: {
+    marginTop: 4,
   },
   list: {
     gap: 12,
-  },
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#F5F7FA',
   },
   rowHeader: {
     flexDirection: 'row',
@@ -436,33 +449,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  symbol: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111111',
-  },
+  symbol: {},
   threshold: {
     marginTop: 4,
-    fontSize: 14,
-    color: '#666666',
   },
-  deleteButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#D32F2F',
-  },
-  deleteButtonDisabled: {
-    backgroundColor: '#D7D7D7',
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+  deleteWrapper: {
+    minWidth: 80,
   },
   deleteError: {
     marginTop: 12,
-    fontSize: 14,
-    color: '#C62828',
   },
 });

@@ -5,6 +5,14 @@ import type { AlertsState } from '../src/application/alerts.store';
 import type { NotificationsState } from '../src/application/notifications.store';
 import type { StocksState } from '../src/application/stocks.store';
 
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
+
 type AuthStoreSnapshot = {
   error: string | null;
   isAuthenticated: boolean;
@@ -184,8 +192,8 @@ describe('auth shell runtime flow', () => {
   it('transitions from successful login into rendered tabs in one runtime path', async () => {
     const { rerender } = render(<AppNavigator />);
 
-    fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(screen.getByTestId('password-input'), 'securePass1');
+    fireEvent.changeText(screen.getByTestId('email-input-text-field'), 'user@example.com');
+    fireEvent.changeText(screen.getByTestId('password-input-text-field'), 'securePass1');
     fireEvent.press(screen.getByTestId('login-button'));
 
     expect(authState.login).toHaveBeenCalledWith('user@example.com', 'securePass1');
@@ -207,8 +215,8 @@ describe('auth shell runtime flow', () => {
 
     const { rerender } = render(<AppNavigator />);
 
-    fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(screen.getByTestId('password-input'), 'securePass1');
+    fireEvent.changeText(screen.getByTestId('email-input-text-field'), 'user@example.com');
+    fireEvent.changeText(screen.getByTestId('password-input-text-field'), 'securePass1');
     fireEvent.press(screen.getByTestId('login-button'));
 
     rerender(<AppNavigator />);

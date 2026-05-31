@@ -1,7 +1,19 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { StocksScreen } from '../src/presentation/screens/StocksScreen';
+import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import type { StocksState } from '../src/application/stocks.store';
+
+// ---------------------------------------------------------------------------
+// MMKV mock
+// ---------------------------------------------------------------------------
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
 
 const mockUseStocksStore = jest.fn();
 const mockNavigate = jest.fn();
@@ -13,6 +25,10 @@ jest.mock('../src/data/container', () => ({
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
+
+function renderWithTheme(ui: React.ReactElement) {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+}
 
 describe('StocksScreen', () => {
   let state: StocksState;
@@ -44,16 +60,18 @@ describe('StocksScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('shows a loading state while the initial request is pending', () => {
+  it('shows a loading state with skeleton cards while the initial request is pending', () => {
     state.isLoading = true;
 
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-loading-state')).toBeTruthy();
-    expect(screen.getByText('Loading stocks...')).toBeTruthy();
+    // Skeleton cards should be visible during loading
+    expect(screen.getByTestId('stocks-skeleton-card-1')).toBeTruthy();
+    expect(screen.getByTestId('stocks-skeleton-card-2')).toBeTruthy();
   });
 
-  it('renders stock rows with symbol, name, price, and change percent', () => {
+  it('renders stock cards with symbol, name, price, and change badge', () => {
     state.items = [
       {
         symbol: 'AAPL',
@@ -63,17 +81,33 @@ describe('StocksScreen', () => {
       },
     ];
 
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-list-state')).toBeTruthy();
     expect(screen.getByText('AAPL')).toBeTruthy();
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
     expect(screen.getByText('$212.45')).toBeTruthy();
-    expect(screen.getByText('+1.23%')).toBeTruthy();
+    // Badge shows trend arrow + percentage
+    expect(screen.getByText('▲ +1.23%')).toBeTruthy();
+  });
+
+  it('shows a negative trend badge for declining stocks', () => {
+    state.items = [
+      {
+        symbol: 'MSFT',
+        name: 'Microsoft',
+        currentPrice: 498.12,
+        changePercent: -0.47,
+      },
+    ];
+
+    renderWithTheme(<StocksScreen />);
+
+    expect(screen.getByText('▼ -0.47%')).toBeTruthy();
   });
 
   it('shows an explicit empty state when the API returns no items', () => {
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-empty-state')).toBeTruthy();
     expect(screen.getByText('No stocks available')).toBeTruthy();
@@ -82,7 +116,7 @@ describe('StocksScreen', () => {
   it('shows a retryable error state when loading fails without items', () => {
     state.error = 'No internet connection';
 
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-error-state')).toBeTruthy();
     fireEvent.press(screen.getByTestId('stocks-retry-button'));
@@ -99,7 +133,7 @@ describe('StocksScreen', () => {
       },
     ];
 
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     const scrollView = screen.getByTestId('stocks-scroll');
 
@@ -123,7 +157,7 @@ describe('StocksScreen', () => {
     state.lastUpdatedAt = '2026-05-28T22:30:00.000Z';
     state.error = 'No internet connection';
 
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-stale-banner')).toBeTruthy();
     expect(screen.getByText('Showing your last saved stocks snapshot.')).toBeTruthy();
@@ -131,7 +165,7 @@ describe('StocksScreen', () => {
     expect(screen.queryByText('No internet connection')).toBeNull();
   });
 
-  it('navigates to StockChart on stock row tap with symbol param', () => {
+  it('navigates to StockChart on stock card press with symbol param', () => {
     state.items = [
       {
         symbol: 'AAPL',
@@ -141,7 +175,7 @@ describe('StocksScreen', () => {
       },
     ];
 
-    render(<StocksScreen />);
+    renderWithTheme(<StocksScreen />);
 
     fireEvent.press(screen.getByTestId('stocks-row-AAPL'));
     expect(mockNavigate).toHaveBeenCalledWith('StockChart', { symbol: 'AAPL' });

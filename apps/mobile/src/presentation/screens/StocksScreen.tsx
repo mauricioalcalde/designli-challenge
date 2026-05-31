@@ -1,16 +1,13 @@
 import { useEffect } from 'react';
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStocksStore } from '../../data/container';
+import { Badge } from '../components/Badge';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Skeleton } from '../components/Skeleton';
+import { useTheme } from '../theme/useTheme';
 
 function formatPrice(value: number): string {
   return `$${value.toFixed(2)}`;
@@ -41,86 +38,239 @@ export function StocksScreen() {
   const load = useStocksStore((state) => state.load);
   const refresh = useStocksStore((state) => state.refresh);
 
+  const { tokens } = useTheme();
+
   useEffect(() => {
     void load();
   }, [load]);
 
+  // ---- Loading: skeleton cards ----
   if (isLoading && items.length === 0) {
     return (
-      <View style={styles.centered} testID="stocks-loading-state">
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.helperText}>Loading stocks...</Text>
+      <View
+        style={[styles.centered, { backgroundColor: tokens.colors.background }]}
+        testID="stocks-loading-state"
+      >
+        <Text
+          style={[
+            styles.title,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.h2.fontSize,
+              fontWeight: tokens.typography.h2.fontWeight,
+            },
+          ]}
+        >
+          Stocks
+        </Text>
+        <Skeleton.Card width={320} height={72} testID="stocks-skeleton-card-1" />
+        <View style={{ height: 12 }} />
+        <Skeleton.Card width={320} height={72} testID="stocks-skeleton-card-2" />
+        <View style={{ height: 12 }} />
+        <Skeleton.Card width={320} height={72} testID="stocks-skeleton-card-3" />
       </View>
     );
   }
 
+  // ---- Error with no items ----
   if (error && items.length === 0) {
     return (
-      <View style={styles.centered} testID="stocks-error-state">
-        <Text style={styles.title}>Stocks</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => void load()}
-          testID="stocks-retry-button"
+      <View
+        style={[styles.centered, { backgroundColor: tokens.colors.background }]}
+        testID="stocks-error-state"
+      >
+        <Text
+          style={[
+            styles.title,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.h2.fontSize,
+              fontWeight: tokens.typography.h2.fontWeight,
+            },
+          ]}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+          Stocks
+        </Text>
+        <Text
+          style={[
+            styles.errorText,
+            {
+              color: tokens.colors.error,
+              fontSize: tokens.typography.body.fontSize,
+            },
+          ]}
+        >
+          {error}
+        </Text>
+        <Button
+          title="Retry"
+          onPress={() => void load()}
+          variant="primary"
+          testID="stocks-retry-button"
+        />
       </View>
     );
   }
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.content, items.length === 0 && styles.centeredContent]}
+      contentContainerStyle={[
+        styles.content,
+        { backgroundColor: tokens.colors.background },
+        items.length === 0 && styles.centeredContent,
+      ]}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />}
       testID="stocks-scroll"
     >
-      <Text style={styles.title}>Stocks</Text>
+      <Text
+        style={[
+          styles.title,
+          {
+            color: tokens.colors.text,
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+          },
+        ]}
+      >
+        Stocks
+      </Text>
 
-      {isStale && lastUpdatedAt ? (
-        <View style={styles.staleBanner} testID="stocks-stale-banner">
-          <Text style={styles.staleTitle}>Showing your last saved stocks snapshot.</Text>
-          <Text style={styles.staleTimestamp}>
+      {/* Stale banner */}
+      {isStale && lastUpdatedAt && (
+        <View
+          style={[
+            styles.staleBanner,
+            {
+              backgroundColor: `${tokens.colors.warning}20`,
+              borderColor: tokens.colors.warning,
+            },
+          ]}
+          testID="stocks-stale-banner"
+        >
+          <Text
+            style={{
+              fontSize: tokens.typography.caption.fontSize,
+              fontWeight: '600',
+              color: tokens.colors.warning,
+            }}
+          >
+            Showing your last saved stocks snapshot.
+          </Text>
+          <Text
+            style={[
+              styles.staleTimestamp,
+              {
+                color: tokens.colors.warning,
+                fontSize: tokens.typography.caption.fontSize,
+              },
+            ]}
+          >
             Last updated {formatSnapshotTimestamp(lastUpdatedAt)}
           </Text>
         </View>
-      ) : null}
+      )}
 
-      {error && !isStale ? <Text style={styles.inlineError}>{error}</Text> : null}
+      {error && !isStale && (
+        <Text
+          style={[
+            styles.inlineError,
+            {
+              color: tokens.colors.error,
+              fontSize: tokens.typography.caption.fontSize,
+            },
+          ]}
+        >
+          {error}
+        </Text>
+      )}
 
+      {/* Empty state */}
       {items.length === 0 ? (
         <View style={styles.emptyState} testID="stocks-empty-state">
-          <Text style={styles.emptyTitle}>No stocks available</Text>
-          <Text style={styles.helperText}>Pull to refresh and try again.</Text>
+          <Text
+            style={[
+              styles.emptyTitle,
+              {
+                color: tokens.colors.text,
+                fontSize: tokens.typography.h3.fontSize,
+                fontWeight: '600',
+              },
+            ]}
+          >
+            No stocks available
+          </Text>
+          <Text
+            style={[
+              styles.helperText,
+              {
+                color: tokens.colors.textSecondary,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
+            Pull to refresh and try again.
+          </Text>
         </View>
       ) : (
+        /* Stock cards with trend badges */
         <View style={styles.list} testID="stocks-list-state">
-          {items.map((item) => (
-            <TouchableOpacity
-              key={item.symbol}
-              style={styles.row}
-              testID={`stocks-row-${item.symbol}`}
-              onPress={() => navigation.navigate('StockChart', { symbol: item.symbol })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.rowCopy}>
-                <Text style={styles.symbol}>{item.symbol}</Text>
-                <Text style={styles.name}>{item.name}</Text>
-              </View>
-              <View style={styles.rowValues}>
-                <Text style={styles.price}>{formatPrice(item.currentPrice)}</Text>
-                <Text
-                  style={[
-                    styles.change,
-                    item.changePercent >= 0 ? styles.positive : styles.negative,
-                  ]}
-                >
-                  {formatChangePercent(item.changePercent)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {items.map((item) => {
+            const isPositive = item.changePercent >= 0;
+            const trendArrow = isPositive ? '▲' : '▼';
+            const badgeVariant = isPositive ? 'success' : 'error';
+            const changeText = `${trendArrow} ${formatChangePercent(item.changePercent)}`;
+
+            return (
+              <Card
+                key={item.symbol}
+                onPress={() => navigation.navigate('StockChart', { symbol: item.symbol })}
+                testID={`stocks-row-${item.symbol}`}
+              >
+                <View style={styles.row}>
+                  <View style={styles.rowCopy}>
+                    <Text
+                      style={[
+                        styles.symbol,
+                        {
+                          color: tokens.colors.text,
+                          fontSize: tokens.typography.body.fontSize,
+                          fontWeight: '700',
+                        },
+                      ]}
+                    >
+                      {item.symbol}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.name,
+                        {
+                          color: tokens.colors.textSecondary,
+                          fontSize: tokens.typography.caption.fontSize,
+                        },
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                  </View>
+                  <View style={styles.rowValues}>
+                    <Text
+                      style={[
+                        styles.price,
+                        {
+                          color: tokens.colors.text,
+                          fontSize: tokens.typography.body.fontSize,
+                          fontWeight: '600',
+                        },
+                      ]}
+                    >
+                      {formatPrice(item.currentPrice)}
+                    </Text>
+                    <Badge text={changeText} variant={badgeVariant} />
+                  </View>
+                </View>
+              </Card>
+            );
+          })}
         </View>
       )}
     </ScrollView>
@@ -133,75 +283,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
   },
   centeredContent: {
     flexGrow: 1,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111111',
     marginBottom: 16,
   },
-  helperText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
-  },
   errorText: {
-    fontSize: 16,
-    color: '#C62828',
     textAlign: 'center',
     marginBottom: 16,
   },
   inlineError: {
-    fontSize: 14,
-    color: '#C62828',
     marginBottom: 12,
   },
   staleBanner: {
     marginBottom: 16,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#FFF8E1',
     borderWidth: 1,
-    borderColor: '#F4C542',
-  },
-  staleTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7A5C00',
   },
   staleTimestamp: {
     marginTop: 4,
-    fontSize: 13,
-    color: '#7A5C00',
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111111',
+  emptyTitle: {},
+  helperText: {
+    marginTop: 8,
+    textAlign: 'center',
   },
   list: {
     gap: 12,
@@ -210,9 +325,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#F5F7FA',
   },
   rowCopy: {
     flex: 1,
@@ -221,30 +333,9 @@ const styles = StyleSheet.create({
   rowValues: {
     alignItems: 'flex-end',
   },
-  symbol: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111111',
-  },
+  symbol: {},
   name: {
     marginTop: 4,
-    fontSize: 14,
-    color: '#666666',
   },
-  price: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111111',
-  },
-  change: {
-    marginTop: 4,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  positive: {
-    color: '#0F9D58',
-  },
-  negative: {
-    color: '#C62828',
-  },
+  price: {},
 });

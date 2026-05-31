@@ -4,9 +4,18 @@ import { AppNavigator } from '../src/presentation/navigation/AppNavigator';
 import { AuthStack } from '../src/presentation/navigation/AuthStack';
 import { ConnectivityBanner } from '../src/presentation/components/ConnectivityBanner';
 import { MainTabs } from '../src/presentation/navigation/MainTabs';
+import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import type { AlertsState } from '../src/application/alerts.store';
 import type { NotificationsState } from '../src/application/notifications.store';
 import type { StocksState } from '../src/application/stocks.store';
+
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
 
 const mockUseAuthStore = jest.fn();
 const mockUseAlertsStore = jest.fn();
@@ -241,7 +250,11 @@ describe('navigation shell', () => {
   });
 
   it('shows real stocks content, real alerts content, and replaces Settings with notifications shell', () => {
-    render(<MainTabs />);
+    render(
+      <ThemeProvider>
+        <MainTabs />
+      </ThemeProvider>,
+    );
 
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
 

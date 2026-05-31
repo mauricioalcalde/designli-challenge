@@ -1,8 +1,20 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { AlertsScreen } from '../src/presentation/screens/AlertsScreen';
+import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import type { AlertsState } from '../src/application/alerts.store';
 import type { StocksState } from '../src/application/stocks.store';
+
+// ---------------------------------------------------------------------------
+// MMKV mock
+// ---------------------------------------------------------------------------
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
 
 const mockUseAlertsStore = jest.fn();
 const mockUseStocksStore = jest.fn();
@@ -11,6 +23,10 @@ jest.mock('../src/data/container', () => ({
   useAlertsStore: (selector: (state: AlertsState) => unknown) => mockUseAlertsStore(selector),
   useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
 }));
+
+function renderWithTheme(ui: React.ReactElement) {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+}
 
 describe('AlertsScreen', () => {
   let state: AlertsState;
@@ -58,27 +74,27 @@ describe('AlertsScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('shows a loading state while the initial request is pending', () => {
+  it('shows a loading state with skeleton while the initial request is pending', () => {
     state.isLoading = true;
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-loading-state')).toBeTruthy();
-    expect(screen.getByText('Loading alerts...')).toBeTruthy();
+    expect(screen.getByTestId('alerts-skeleton-form')).toBeTruthy();
   });
 
   it('shows an explicit empty state when the API returns no items', () => {
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-empty-state')).toBeTruthy();
     expect(screen.getByText('No alerts yet')).toBeTruthy();
   });
 
   it('submits valid create values and resets the form on success', async () => {
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
-    fireEvent.changeText(screen.getByTestId('alerts-symbol-input'), ' msft ');
-    fireEvent.changeText(screen.getByTestId('alerts-threshold-input'), '400');
+    fireEvent.changeText(screen.getByTestId('alerts-symbol-input-text-field'), ' msft ');
+    fireEvent.changeText(screen.getByTestId('alerts-threshold-input-text-field'), '400');
     fireEvent.press(screen.getByTestId('alerts-direction-below'));
     await act(async () => {
       fireEvent.press(screen.getByTestId('alerts-submit-button'));
@@ -91,13 +107,13 @@ describe('AlertsScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('alerts-symbol-input').props.value).toBe('');
-      expect(screen.getByTestId('alerts-threshold-input').props.value).toBe('');
+      expect(screen.getByTestId('alerts-symbol-input-text-field').props.value).toBe('');
+      expect(screen.getByTestId('alerts-threshold-input-text-field').props.value).toBe('');
     });
   });
 
   it('shows validation errors before submitting invalid values', () => {
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     fireEvent.press(screen.getByTestId('alerts-submit-button'));
 
@@ -110,28 +126,28 @@ describe('AlertsScreen', () => {
     state.submitError = 'Duplicate request';
     state.create = jest.fn().mockResolvedValue(false);
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
-    fireEvent.changeText(screen.getByTestId('alerts-symbol-input'), 'AAPL');
-    fireEvent.changeText(screen.getByTestId('alerts-threshold-input'), '180');
+    fireEvent.changeText(screen.getByTestId('alerts-symbol-input-text-field'), 'AAPL');
+    fireEvent.changeText(screen.getByTestId('alerts-threshold-input-text-field'), '180');
     await act(async () => {
       fireEvent.press(screen.getByTestId('alerts-submit-button'));
     });
 
     expect(screen.getByTestId('alerts-submit-error')).toBeTruthy();
     expect(screen.getByText('Duplicate request')).toBeTruthy();
-    expect(screen.getByTestId('alerts-symbol-input').props.value).toBe('AAPL');
+    expect(screen.getByTestId('alerts-symbol-input-text-field').props.value).toBe('AAPL');
   });
 
   it('shows a submitting state while create is in flight', () => {
     state.isSubmitting = true;
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-submit-button').props.accessibilityState.disabled).toBe(true);
   });
 
-  it('renders stock suggestions only from already-loaded stocks state', () => {
+  it('renders stock suggestions from already-loaded stocks state', () => {
     stocksState.items = [
       {
         symbol: 'AAPL',
@@ -147,20 +163,20 @@ describe('AlertsScreen', () => {
       },
     ];
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-symbol-suggestions')).toBeTruthy();
     fireEvent.press(screen.getByTestId('alerts-suggestion-MSFT'));
-    expect(screen.getByTestId('alerts-symbol-input').props.value).toBe('MSFT');
+    expect(screen.getByTestId('alerts-symbol-input-text-field').props.value).toBe('MSFT');
   });
 
   it('allows manual symbol entry when stocks data is unavailable', async () => {
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.queryByTestId('alerts-symbol-suggestions')).toBeNull();
 
-    fireEvent.changeText(screen.getByTestId('alerts-symbol-input'), 'TSLA');
-    fireEvent.changeText(screen.getByTestId('alerts-threshold-input'), '250');
+    fireEvent.changeText(screen.getByTestId('alerts-symbol-input-text-field'), 'TSLA');
+    fireEvent.changeText(screen.getByTestId('alerts-threshold-input-text-field'), '250');
     await act(async () => {
       fireEvent.press(screen.getByTestId('alerts-submit-button'));
     });
@@ -175,7 +191,7 @@ describe('AlertsScreen', () => {
   it('shows a retryable error state when loading fails without items', () => {
     state.error = 'No internet connection';
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-error-state')).toBeTruthy();
     fireEvent.press(screen.getByTestId('alerts-retry-button'));
@@ -196,7 +212,7 @@ describe('AlertsScreen', () => {
       },
     ];
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-list-state')).toBeTruthy();
     expect(screen.getByText('AAPL')).toBeTruthy();
@@ -217,7 +233,7 @@ describe('AlertsScreen', () => {
       },
     ];
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     fireEvent.press(screen.getByTestId('alerts-delete-button-2'));
     expect(state.remove).toHaveBeenCalledWith(2);
@@ -238,7 +254,7 @@ describe('AlertsScreen', () => {
     ];
     state.deletingIds = [2];
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByText('Deleting...')).toBeTruthy();
   });
@@ -258,7 +274,7 @@ describe('AlertsScreen', () => {
     ];
     state.deleteErrors = { 3: 'Alert not found' };
 
-    render(<AlertsScreen />);
+    renderWithTheme(<AlertsScreen />);
 
     expect(screen.getByTestId('alerts-delete-error-3')).toBeTruthy();
     expect(screen.getByText('Alert not found')).toBeTruthy();

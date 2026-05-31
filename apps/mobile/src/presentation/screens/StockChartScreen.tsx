@@ -11,6 +11,8 @@ import { CartesianChart, Line } from 'victory-native';
 import type { ChartRange, StockChartPoint } from '@designli-challenge/shared';
 import { useRoute } from '@react-navigation/native';
 import { useStocksStore } from '../../data/container';
+import { Button } from '../components/Button';
+import { useTheme } from '../theme/useTheme';
 
 const TIMEFRAMES: ChartRange[] = ['1D', '1W', '1M', '3M', '1Y'];
 
@@ -22,9 +24,10 @@ function formatAxisDate(epoch: number): string {
 interface ChartContentProps {
   data: StockChartPoint[];
   range: ChartRange;
+  chartColor: string;
 }
 
-const ChartContent = ({ data, range }: ChartContentProps) => {
+const ChartContent = ({ data, range, chartColor }: ChartContentProps) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartData: any[] = useMemo(
     () =>
@@ -51,7 +54,7 @@ const ChartContent = ({ data, range }: ChartContentProps) => {
         {({ points }) => (
           <Line
             points={points.close}
-            color="#007AFF"
+            color={chartColor}
             strokeWidth={2}
             animate={{ type: 'timing', duration: 300 }}
           />
@@ -62,7 +65,11 @@ const ChartContent = ({ data, range }: ChartContentProps) => {
 };
 
 export function StockChartScreen() {
-  const route = useRoute<{ key: string; name: string; params: { symbol: string } }>();
+  const route = useRoute<{
+    key: string;
+    name: string;
+    params: { symbol: string };
+  }>();
   const symbol = route.params.symbol;
 
   const chartData = useStocksStore((state) => state.chartData);
@@ -70,6 +77,8 @@ export function StockChartScreen() {
   const chartIsLoading = useStocksStore((state) => state.chartIsLoading);
   const chartError = useStocksStore((state) => state.chartError);
   const loadChart = useStocksStore((state) => state.loadChart);
+
+  const { tokens } = useTheme();
 
   useEffect(() => {
     void loadChart(symbol, '1W');
@@ -86,10 +95,30 @@ export function StockChartScreen() {
   const isLoading = chartIsLoading && chartData.length === 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.container} testID="stock-chart-screen">
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        {
+          backgroundColor: tokens.colors.background,
+          padding: tokens.spacing.md,
+        },
+      ]}
+      testID="stock-chart-screen"
+    >
       {/* Header */}
       <View style={styles.header} testID="stock-chart-symbol-header">
-        <Text style={styles.symbol}>{symbol}</Text>
+        <Text
+          style={[
+            styles.symbol,
+            {
+              color: tokens.colors.text,
+              fontSize: tokens.typography.h3.fontSize,
+              fontWeight: tokens.typography.h3.fontWeight,
+            },
+          ]}
+        >
+          {symbol}
+        </Text>
       </View>
 
       {/* Timeframe selector */}
@@ -100,11 +129,26 @@ export function StockChartScreen() {
             <TouchableOpacity
               key={tf}
               testID={`chart-timeframe-${tf}`}
-              style={[styles.timeframePill, isActive && styles.timeframePillActive]}
+              style={[
+                styles.timeframePill,
+                {
+                  backgroundColor: isActive ? tokens.colors.primary : tokens.colors.surface,
+                  borderColor: isActive ? tokens.colors.primary : tokens.colors.border,
+                },
+              ]}
               onPress={() => handleTimeframePress(tf)}
               disabled={chartIsLoading}
             >
-              <Text style={[styles.timeframeText, isActive && styles.timeframeTextActive]}>
+              <Text
+                style={[
+                  styles.timeframeText,
+                  {
+                    color: isActive ? '#FFFFFF' : tokens.colors.textSecondary,
+                    fontSize: tokens.typography.caption.fontSize,
+                    fontWeight: '600',
+                  },
+                ]}
+              >
                 {tf}
               </Text>
             </TouchableOpacity>
@@ -115,26 +159,55 @@ export function StockChartScreen() {
       {/* Content area */}
       {isLoading ? (
         <View style={styles.centered} testID="stock-chart-loading">
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.helperText}>Loading chart...</Text>
+          <ActivityIndicator size="large" color={tokens.colors.primary} />
+          <Text
+            style={[
+              styles.helperText,
+              {
+                color: tokens.colors.textSecondary,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
+            Loading chart...
+          </Text>
         </View>
       ) : chartError && chartData.length === 0 ? (
         <View style={styles.centered} testID="stock-chart-error">
-          <Text style={styles.errorText}>{chartError}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={handleRetry}
-            testID="stock-chart-retry-button"
+          <Text
+            style={[
+              styles.errorText,
+              {
+                color: tokens.colors.error,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+            {chartError}
+          </Text>
+          <Button
+            title="Retry"
+            onPress={handleRetry}
+            variant="primary"
+            testID="stock-chart-retry-button"
+          />
         </View>
       ) : chartData.length === 0 ? (
         <View style={styles.centered} testID="stock-chart-empty">
-          <Text style={styles.emptyText}>No chart data available</Text>
+          <Text
+            style={[
+              styles.emptyText,
+              {
+                color: tokens.colors.textSecondary,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
+            No chart data available
+          </Text>
         </View>
       ) : (
-        <ChartContent data={chartData} range={chartRange} />
+        <ChartContent data={chartData} range={chartRange} chartColor={tokens.colors.chartLine} />
       )}
     </ScrollView>
   );
@@ -143,17 +216,11 @@ export function StockChartScreen() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 16,
   },
   header: {
     marginBottom: 12,
   },
-  symbol: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111111',
-  },
+  symbol: {},
   timeframeRow: {
     flexDirection: 'row',
     gap: 8,
@@ -163,22 +230,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#F0F0F0',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
   },
-  timeframePillActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  timeframeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666666',
-  },
-  timeframeTextActive: {
-    color: '#FFFFFF',
-  },
+  timeframeText: {},
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -188,30 +242,13 @@ const styles = StyleSheet.create({
   },
   helperText: {
     marginTop: 12,
-    fontSize: 14,
-    color: '#666666',
     textAlign: 'center',
   },
   errorText: {
-    fontSize: 16,
-    color: '#C62828',
     textAlign: 'center',
     marginBottom: 16,
   },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   emptyText: {
-    fontSize: 16,
-    color: '#666666',
     textAlign: 'center',
   },
 });

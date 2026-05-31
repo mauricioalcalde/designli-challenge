@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNotificationsStore } from '../../data/container';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Skeleton } from '../components/Skeleton';
+import { useTheme } from '../theme/useTheme';
 
 export function NotificationsSettingsScreen() {
   const permissionStatus = useNotificationsStore((state) => state.permissionStatus);
@@ -10,7 +14,11 @@ export function NotificationsSettingsScreen() {
   const error = useNotificationsStore((state) => state.error);
   const lastRegisteredAt = useNotificationsStore((state) => state.lastRegisteredAt);
   const refreshStatus = useNotificationsStore((state) => state.refreshStatus);
-  const requestPermissionAndRegister = useNotificationsStore((state) => state.requestPermissionAndRegister);
+  const requestPermissionAndRegister = useNotificationsStore(
+    (state) => state.requestPermissionAndRegister,
+  );
+
+  const { tokens } = useTheme();
 
   useEffect(() => {
     void refreshStatus();
@@ -22,70 +30,200 @@ export function NotificationsSettingsScreen() {
   const isLoading = isChecking || (permissionStatus === 'unknown' && tokenStatus === 'idle');
 
   return (
-    <View style={styles.container} testID="notifications-screen">
-      <Text style={styles.title}>Notifications</Text>
-      <Text style={styles.subtitle}>Prepare this device for stock alert delivery.</Text>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: tokens.colors.background, padding: tokens.spacing.lg },
+      ]}
+      testID="notifications-screen"
+    >
+      <Text
+        style={[
+          styles.title,
+          {
+            color: tokens.colors.text,
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+          },
+        ]}
+      >
+        Notifications
+      </Text>
+      <Text
+        style={[
+          styles.subtitle,
+          {
+            color: tokens.colors.textSecondary,
+            fontSize: tokens.typography.body.fontSize,
+          },
+        ]}
+      >
+        Prepare this device for stock alert delivery.
+      </Text>
 
-      {isLoading ? (
-        <View style={styles.card} testID="notifications-loading-state">
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.body}>Checking notification readiness...</Text>
-        </View>
-      ) : null}
+      {isLoading && (
+        <Card testID="notifications-loading-state">
+          <Skeleton.Line width={240} height={16} />
+          <View style={{ height: 8 }} />
+          <Skeleton.Line width={180} height={14} />
+        </Card>
+      )}
 
-      {!isLoading && isUnsupported ? (
-        <View style={styles.card} testID="notifications-unsupported-state">
-          <Text style={styles.heading}>Notifications unavailable</Text>
-          <Text style={styles.body}>
+      {!isLoading && isUnsupported && (
+        <Card testID="notifications-unsupported-state">
+          <Text
+            style={[
+              styles.heading,
+              {
+                color: tokens.colors.text,
+                fontSize: tokens.typography.h4.fontSize,
+                fontWeight: tokens.typography.h4.fontWeight,
+              },
+            ]}
+          >
+            Notifications unavailable
+          </Text>
+          <Text
+            style={[
+              styles.body,
+              {
+                color: tokens.colors.textSecondary,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
             Use a native iOS or Android development build on a supported device to continue.
           </Text>
-        </View>
-      ) : null}
+        </Card>
+      )}
 
-      {!isLoading && !isUnsupported && isDenied ? (
-        <View style={styles.card} testID="notifications-denied-state">
-          <Text style={styles.heading}>Notifications are disabled</Text>
-          <Text style={styles.body}>Enable permission, then register this device.</Text>
-        </View>
-      ) : null}
+      {!isLoading && !isUnsupported && isDenied && (
+        <Card testID="notifications-denied-state">
+          <Text
+            style={[
+              styles.heading,
+              {
+                color: tokens.colors.text,
+                fontSize: tokens.typography.h4.fontSize,
+                fontWeight: tokens.typography.h4.fontWeight,
+              },
+            ]}
+          >
+            Notifications are disabled
+          </Text>
+          <Text
+            style={[
+              styles.body,
+              {
+                color: tokens.colors.textSecondary,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
+            Enable permission, then register this device.
+          </Text>
+        </Card>
+      )}
 
-      {!isLoading && !isUnsupported && permissionStatus === 'granted' && !isRegistered && !error ? (
-        <View style={styles.card} testID="notifications-ready-state">
-          <Text style={styles.heading}>Ready to register</Text>
-          <Text style={styles.body}>Permission is granted. Register this device when you are ready.</Text>
-        </View>
-      ) : null}
+      {!isLoading &&
+        !isUnsupported &&
+        permissionStatus === 'granted' &&
+        !isRegistered &&
+        !error && (
+          <Card testID="notifications-ready-state">
+            <Text
+              style={[
+                styles.heading,
+                {
+                  color: tokens.colors.text,
+                  fontSize: tokens.typography.h4.fontSize,
+                  fontWeight: tokens.typography.h4.fontWeight,
+                },
+              ]}
+            >
+              Ready to register
+            </Text>
+            <Text
+              style={[
+                styles.body,
+                {
+                  color: tokens.colors.textSecondary,
+                  fontSize: tokens.typography.body.fontSize,
+                },
+              ]}
+            >
+              Permission is granted. Register this device when you are ready.
+            </Text>
+          </Card>
+        )}
 
-      {!isLoading && tokenStatus === 'error' && error ? (
-        <View style={styles.card} testID="notifications-error-state">
-          <Text style={styles.heading}>Registration failed</Text>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+      {!isLoading && tokenStatus === 'error' && error && (
+        <Card testID="notifications-error-state">
+          <Text
+            style={[
+              styles.heading,
+              {
+                color: tokens.colors.text,
+                fontSize: tokens.typography.h4.fontSize,
+                fontWeight: tokens.typography.h4.fontWeight,
+              },
+            ]}
+          >
+            Registration failed
+          </Text>
+          <Text
+            style={[
+              styles.body,
+              {
+                color: tokens.colors.error,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
+            {error}
+          </Text>
+        </Card>
+      )}
 
-      {!isLoading && isRegistered ? (
-        <View style={styles.card} testID="notifications-registered-state">
-          <Text style={styles.heading}>Device registered</Text>
-          <Text style={styles.body}>
+      {!isLoading && isRegistered && (
+        <Card testID="notifications-registered-state">
+          <Text
+            style={[
+              styles.heading,
+              {
+                color: tokens.colors.text,
+                fontSize: tokens.typography.h4.fontSize,
+                fontWeight: tokens.typography.h4.fontWeight,
+              },
+            ]}
+          >
+            Device registered
+          </Text>
+          <Text
+            style={[
+              styles.body,
+              {
+                color: tokens.colors.textSecondary,
+                fontSize: tokens.typography.body.fontSize,
+              },
+            ]}
+          >
             {lastRegisteredAt
               ? `Last registered at ${lastRegisteredAt}`
               : 'This device is ready to receive future push work.'}
           </Text>
-        </View>
-      ) : null}
+        </Card>
+      )}
 
-      <TouchableOpacity
-        disabled={isLoading || isRegistering}
-        onPress={() => void requestPermissionAndRegister()}
-        style={[styles.primaryButton, (isLoading || isRegistering) && styles.primaryButtonDisabled]}
-        testID="notifications-primary-action"
-      >
-        {isRegistering ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.primaryButtonText}>Enable and register</Text>
-        )}
-      </TouchableOpacity>
+      <View style={styles.buttonWrapper}>
+        <Button
+          title="Enable and register"
+          onPress={() => void requestPermissionAndRegister()}
+          loading={isRegistering}
+          disabled={isLoading || isRegistering}
+          testID="notifications-primary-action"
+        />
+      </View>
     </View>
   );
 }
@@ -93,54 +231,17 @@ export function NotificationsSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 24,
     gap: 16,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#4B5563',
-  },
-  card: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    padding: 20,
-    gap: 8,
-  },
+  title: {},
+  subtitle: {},
   heading: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    marginBottom: 4,
   },
   body: {
-    fontSize: 15,
     lineHeight: 22,
-    color: '#4B5563',
   },
-  errorText: {
-    fontSize: 15,
-    color: '#B91C1C',
-  },
-  primaryButton: {
+  buttonWrapper: {
     marginTop: 'auto',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 20,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
