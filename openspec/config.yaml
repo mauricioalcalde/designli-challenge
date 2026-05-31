@@ -3,35 +3,36 @@ schema: spec-driven
 
 context: |
   Project: designli-challenge
-  Stack: GREENFIELD — no code detected yet.
-  Intended: React Native (mobile client) + Node.js (backend API) — full-stack challenge solution.
-  Architecture: SOLID principles, Clean/Hexagonal Architecture, Screaming Architecture, atomic design.
-  Testing: TDD expected but not yet configured (no test runner detected).
+  Monorepo: pnpm 11.4 with apps/api (NestJS 10 + Prisma + SQLite), apps/mobile (Expo 52 + RN 0.76 + Zustand + MMKV), packages/shared (types).
+  Architecture: SOLID, Clean/Hexagonal, Screaming Architecture, atomic design.
+  Backend: Controllers → Services → Providers pattern with NestJS DI. Prisma ORM with SQLite.
+  Mobile: Feature-based directory layout (auth, alerts, stocks, notifications). Zustand stores + API client layer.
+  Testing: vitest 3 (API, ~50 tests), jest 29 + RNTL (mobile, ~114 tests). strict_tdd=true.
   Style: Conventional Commits, work-unit commits, chained PRs for >400-line changes.
-  Workflow: SDD-driven (Spec-driven development), agentic but human-directed.
+  Workflow: SDD-driven, agentic but human-directed.
+  CI: GitHub Actions (lint + test-api + test-mobile on push/PR to main).
   Docs: Cognitive-load-reduced, progressive disclosure.
 
-strict_tdd: false
+strict_tdd: true
 
 testing:
-  runner: none
+  runner: vitest (api), jest (mobile)
   layers:
-    unit: false
-    integration: false
+    unit: true
+    integration: true
     e2e: false
-  coverage: false
+  coverage: true
   quality:
-    linter: false
-    type_checker: false
-    formatter: false
+    linter: true
+    type_checker: true
+    formatter: true
   notes: >
-    No testing infrastructure exists yet. Bootstrap gaps:
-    - No package.json/manifest detected
-    - No test runner configured
-    - No linter/formatter setup
-    - No CI pipeline
-    strict_tdd set to false because no test runner exists.
-    Once a test runner is added, strict_tdd SHOULD be set to true.
+    Full testing infrastructure in place:
+    - API: vitest 3 with @nestjs/testing + supertest for integration tests
+    - Mobile: jest 29 + jest-expo + @testing-library/react-native
+    - Coverage available via --coverage flags but not explicitly configured
+    - ESLint 8.57 + Prettier 3.4 + Husky/lint-staged for code quality
+    - CI runs test suites on push/PR via GitHub Actions
 
 rules:
   proposal:
@@ -50,11 +51,11 @@ rules:
     - Keep tasks completable in one session
     - Map each task to test-first step when strict_tdd is enabled
   apply:
-    tdd: false
-    test_command: ""
+    tdd: true
+    test_command: 'pnpm test'
   verify:
-    test_command: ""
-    build_command: ""
+    test_command: 'pnpm test'
+    build_command: 'pnpm build:api && pnpm typecheck'
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas

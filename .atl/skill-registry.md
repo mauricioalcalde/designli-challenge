@@ -1,6 +1,6 @@
 # Skill Registry — designli-challenge
 
-> Generated: 2026-05-28 by sdd-init
+> Generated: 2026-05-31 by sdd-init (re-init with real stack)
 > Mode: hybrid
 
 ## User Skills
@@ -133,6 +133,7 @@
 
 ## Notes
 
-- No project-level skills detected (repo is greenfield)
-- No project-level convention files detected
+- No project-level skills detected (no .claude/skills/, .gemini/skills/, .agent/skills/, or skills/ directories)
+- No project-level convention files detected (no AGENTS.md, CLAUDE.md, .cursorrules, GEMINI.md, or copilot-instructions.md)
 - User-level skills fully resolved and registered above
+- Project conventions sourced from `~/.config/opencode/AGENTS.md`

@@ -1,6 +1,8 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+overrides:
+  metro-cache: 0.81.5
 allowBuilds:
   '@firebase/util': true
   '@nestjs/core': true
