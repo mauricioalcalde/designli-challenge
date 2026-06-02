@@ -81,3 +81,80 @@ The system **MUST** include ≥3 passing tests covering AuthService, AuthControl
 - GIVEN the API workspace is set up
 - WHEN `pnpm -F api test` runs
 - THEN ≥3 tests pass covering register, login, duplicate email, wrong password, and missing token scenarios
+
+### Requirement: Premium Auth Entry
+
+The mobile auth presentation **MUST** use the premium design system, a login-first shell, and splash-driven entry flow while preserving `POST /auth/login`, `POST /auth/register`, auth guards, and auth state semantics. The auth screen **MUST** include keyboard avoidance, password visibility toggle, and inline error presentation.
+
+#### Scenario: Login behavior is preserved
+
+- **GIVEN** valid credentials on the premium auth screen
+- **WHEN** the user submits the form
+- **THEN** the existing auth flow succeeds without changing request or response contracts
+
+#### Scenario: Splash routes into auth or app shell
+
+- **GIVEN** the app finishes splash bootstrap
+- **WHEN** auth state is resolved
+- **THEN** unauthenticated users land in auth
+- **AND** authenticated users continue into the premium tab shell
+
+#### Scenario: Auth screen keyboard and error quality
+
+- **GIVEN** the auth screen is rendered
+- **WHEN** the user interacts with inputs or submits invalid data
+- **THEN** keyboard avoidance keeps the form visible
+- **AND** errors display inline using design system tokens
+- **AND** password visibility is toggleable
+
+### Requirement: Logout Reliability
+
+The `logout()` action **MUST** complete without throwing. `MmkvTokenStorage.clear()` **MUST** call a defined storage method to remove all tokens. The auth store **MUST** transition to unauthenticated state after `logout()` resolves.
+
+#### Scenario: Logout completes without crash
+
+- **GIVEN** the user is authenticated with tokens stored
+- **WHEN** `logout()` is called
+- **THEN** `MmkvTokenStorage.clear()` removes all token keys without throwing
+- **AND** the auth store transitions to `isAuthenticated: false`
+- **AND** the navigation shell routes to the auth screen
+
+#### Scenario: Logout when no tokens exist
+
+- **GIVEN** the token storage is already empty
+- **WHEN** `logout()` is called
+- **THEN** the call resolves without error
+- **AND** the auth store remains in unauthenticated state
+
+### Requirement: Auth Shell Quality
+
+The auth screen **MUST** provide keyboard-aware layout, password visibility toggle, inline error states, and clear visual hierarchy between login and register modes.
+
+#### Scenario: Keyboard does not obscure inputs
+
+- **GIVEN** the auth screen is visible on a device with a software keyboard
+- **WHEN** the user focuses an input field
+- **THEN** the form **MUST** adjust so the focused input and submit button remain visible above the keyboard
+
+#### Scenario: Password visibility toggle
+
+- **GIVEN** the auth screen renders a password input
+- **WHEN** the user taps the visibility toggle icon
+- **THEN** the password text switches between masked and visible
+- **AND** the toggle icon reflects the current state
+
+#### Scenario: Inline validation error display
+
+- **GIVEN** the user submits the auth form with invalid input
+- **WHEN** the API returns a 401 or 409 error
+- **THEN** the error message renders inline below the relevant field
+- **AND** the error uses the design system error color token
+- **AND** no alert dialog is shown
+
+#### Scenario: Login/register mode switch
+
+- **GIVEN** the auth screen is in login mode
+- **WHEN** the user taps the "switch to register" affordance
+- **THEN** the form transitions to register mode
+- **AND** the submit button label updates
+- **AND** the visual hierarchy clearly indicates the active mode

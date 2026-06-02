@@ -27,24 +27,50 @@ export class FirebaseNotificationSender implements INotificationSender {
     return this.messaging;
   }
 
-  async send(_userId: number, payload: AlertNotificationPayload): Promise<NotificationResult> {
+  async send(
+    _userId: number,
+    payload: AlertNotificationPayload,
+    deviceTokens: string[],
+  ): Promise<NotificationResult> {
+    if (deviceTokens.length === 0) {
+      return { success: false, status: 'skipped', error: 'No persisted device tokens' };
+    }
+
     const messaging = this.getMessaging();
     if (!messaging) {
-      return { success: false, error: 'Firebase not configured' };
+      return { success: false, status: 'skipped', error: 'Firebase not configured' };
     }
 
     try {
-      await messaging.send({
-        token: 'placeholder', // Token lookup done by scheduler before calling
+      const response = await messaging.sendEachForMulticast({
+        tokens: deviceTokens,
         notification: {
           title: `Stock Alert: ${payload.symbol}`,
           body: payload.message,
         },
+        data: {
+          alertId: String(payload.alertId),
+          symbol: payload.symbol,
+          type: 'alert-triggered',
+          direction: payload.direction,
+          threshold: String(payload.threshold),
+          currentPrice: String(payload.currentPrice),
+        },
       });
-      return { success: true };
+
+      if (response.successCount > 0) {
+        return { success: true, status: 'sent' };
+      }
+
+      return {
+        success: false,
+        status: 'failed',
+        error: response.responses[0]?.error?.message ?? 'FCM send failed',
+      };
     } catch (error) {
       return {
         success: false,
+        status: 'failed',
         error: error instanceof Error ? error.message : 'FCM send failed',
       };
     }

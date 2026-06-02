@@ -28,6 +28,29 @@ pnpm dev:mobile   # terminal 2: Expo Metro (press a for Android, i for iOS)
 | `pnpm typecheck`            | TypeScript check both packages                       |
 | `pnpm lint`                 | ESLint across repo                                   |
 
+## Verified Delivery Evidence
+
+| Item                         | Command / Artifact                                                                                                                                                                                                                                        | Status  | Evidence                                                                                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notification truth contract  | `pnpm --filter @designli-challenge/api exec vitest run src/application/alerts/alert-evaluator.service.spec.ts src/infrastructure/notifications/console-notification.sender.spec.ts src/infrastructure/notifications/firebase-notification.sender.spec.ts` | pass    | 15/15 tests passed on 2026-05-31 after token-lookup + `sent/skipped/failed` changes.                                                              |
+| Login-shell boot isolation   | `pnpm --filter @designli-challenge/mobile exec jest --runInBand __tests__/App.test.tsx __tests__/navigation-shell.test.tsx __tests__/auth-shell-flow.test.tsx`                                                                                            | pass    | 3 suites, 10 tests passed; auth boot still avoids chart-path imports.                                                                             |
+| Workspace lint               | `pnpm lint`                                                                                                                                                                                                                                               | pass    | ESLint exited successfully; current repo still emits 3 pre-existing test warnings.                                                                |
+| API Docker image             | `docker compose build api`                                                                                                                                                                                                                                | pass    | `Dockerfile.api` builds successfully after installing OpenSSL and preserving pnpm workspace links.                                                |
+| API Docker startup           | `docker compose up -d api`                                                                                                                                                                                                                                | pass    | Service starts on `http://localhost:3001`; `/stocks` with an invalid bearer token returns HTTP 401, proving the auth-safe shell is up.            |
+| Root API build               | `pnpm build:api`                                                                                                                                                                                                                                          | fail    | Prisma `prebuild` intermittently fails on Windows with `EPERM ... query_engine-windows.dll.node.tmp -> query_engine-windows.dll.node`.            |
+| Root typecheck               | `pnpm typecheck`                                                                                                                                                                                                                                          | fail    | Same Prisma generate `EPERM` failure in `pretypecheck`; mobile typecheck is not reached when API prehook fails.                                   |
+| Root test                    | `pnpm test`                                                                                                                                                                                                                                               | fail    | Same Prisma generate `EPERM` failure in `pretest`; the aggregate command stops before the mobile suite.                                           |
+| End-to-end Firebase delivery | Firebase Admin credentials + real device token                                                                                                                                                                                                            | blocked | This repo now uses persisted tokens only, but no verified credential/device pair was available in this slice, so full FCM receipt is NOT claimed. |
+
+### Docker quick check
+
+```bash
+docker compose build api
+docker compose up -d api
+# API is published on http://localhost:3001
+docker compose down
+```
+
 ## Architecture
 
 ```
@@ -93,6 +116,6 @@ pnpm dev:mobile -- --dev-client  # Metro for dev client
 
 ## Limitations
 
-- Push notification delivery is **registration-ready only** (no E2E push receipt).
+- Push notification delivery uses persisted device tokens and returns `sent`, `skipped`, or `failed`, but real Firebase receipt proof is still **blocked** without valid Firebase Admin credentials and a real registered device.
 - Backend uses SQLite (file-based, single-instance).
 - Alert threshold evaluation requires a real Finnhub API key.

@@ -5,7 +5,10 @@ import type { StocksState } from '../src/application/stocks.store';
 import type { AlertsState } from '../src/application/alerts.store';
 import type { StockChartPoint } from '@designli-challenge/shared';
 
-import { StockChartScreen } from '../src/presentation/screens/StockChartScreen';
+import {
+  StockChartScreen,
+  calculateYAxisRange,
+} from '../src/presentation/screens/StockChartScreen';
 import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 
 // ---------------------------------------------------------------------------
@@ -22,9 +25,14 @@ jest.mock('react-native-mmkv', () => ({
 // ---------------------------------------------------------------------------
 // react-native-gifted-charts mock (pure JS, simple mock)
 // ---------------------------------------------------------------------------
-jest.mock('react-native-gifted-charts', () => ({
-  LineChart: 'LineChart',
-}));
+jest.mock('react-native-gifted-charts', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require('react');
+  return {
+    LineChart: ({ testID = 'stock-line-chart', ...props }: Record<string, unknown>) =>
+      React.createElement('LineChart', { testID, ...props }),
+  };
+});
 
 const mockUseStocksStore = jest.fn();
 const mockUseAlertsStore = jest.fn();
@@ -49,7 +57,7 @@ describe('StockChartScreen', () => {
   let stocksState: StocksState;
   let alertsState: AlertsState;
   let route: { params: { symbol: string } };
-  let navigation: { goBack: jest.Mock };
+  let navigation: { goBack: jest.Mock; navigate: jest.Mock };
 
   const chartPoints: StockChartPoint[] = [
     {
@@ -107,7 +115,7 @@ describe('StockChartScreen', () => {
     };
 
     route = { params: { symbol: 'AAPL' } };
-    navigation = { goBack: jest.fn() };
+    navigation = { goBack: jest.fn(), navigate: jest.fn() };
 
     mockUseStocksStore.mockImplementation((selector: (snapshot: StocksState) => unknown) =>
       selector(stocksState),
@@ -123,14 +131,25 @@ describe('StockChartScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the chart screen container when data is available', () => {
+  it('renders the premium detail shell when data is available', () => {
+    stocksState.items = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        currentPrice: 214.8,
+        changePercent: 1.23,
+      },
+    ];
     stocksState.chartData = chartPoints;
     stocksState.chartSymbol = 'AAPL';
 
     renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-screen')).toBeTruthy();
-    expect(screen.getByTestId('stock-chart-symbol-header')).toBeTruthy();
+    expect(screen.getByTestId('stock-price-hero')).toBeTruthy();
+    expect(screen.getByText('Apple Inc.')).toBeTruthy();
+    expect(screen.getByText('$214.80')).toBeTruthy();
+    expect(screen.getByText('+1.23%')).toBeTruthy();
   });
 
   it('displays the symbol in the header', () => {
@@ -164,15 +183,18 @@ describe('StockChartScreen', () => {
     expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1M');
   });
 
-  it('shows loading state when chart data is being fetched', () => {
+  it('shows loading state with skeleton placeholders when chart data is being fetched', () => {
     stocksState.chartIsLoading = true;
 
     renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-loading')).toBeTruthy();
+    expect(screen.getByTestId('stock-chart-skeleton-hero')).toBeTruthy();
+    expect(screen.getByTestId('stock-chart-skeleton-chart')).toBeTruthy();
+    expect(screen.queryByText('Loading chart data…')).toBeNull();
   });
 
-  it('shows error state with retry button when chart fetch fails', () => {
+  it('shows error state with retry action via EmptyState when chart fetch fails', () => {
     stocksState.chartError = 'Network error';
     stocksState.chartSymbol = 'AAPL';
     stocksState.chartRange = '1W';
@@ -180,9 +202,10 @@ describe('StockChartScreen', () => {
     renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-error')).toBeTruthy();
-    expect(screen.getByText('Network error')).toBeTruthy();
+    expect(screen.getByText("We couldn't load this chart right now.")).toBeTruthy();
+    expect(screen.queryByTestId('stock-chart-retry-button')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('stock-chart-retry-button'));
+    fireEvent.press(screen.getByTestId('stock-chart-error-content-action-button'));
     expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1W');
   });
 
@@ -192,7 +215,7 @@ describe('StockChartScreen', () => {
     renderWithTheme(<StockChartScreen />);
 
     expect(screen.getByTestId('stock-chart-empty')).toBeTruthy();
-    expect(screen.getByText('No chart data available')).toBeTruthy();
+    expect(screen.getByText('No price history available yet')).toBeTruthy();
   });
 
   it('triggers loadChart on mount with default 1W range', () => {
@@ -228,5 +251,90 @@ describe('StockChartScreen', () => {
     const refreshControl = screen.UNSAFE_getByType(RefreshControl);
     fireEvent(refreshControl, 'refresh');
     expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1M');
+  });
+
+  it('uses the coral premium chart color', () => {
+    stocksState.chartData = chartPoints;
+
+    const rendered = renderWithTheme(<StockChartScreen />);
+
+    expect(rendered.UNSAFE_getByProps({ color: '#E6847E' }).props.color).toBe('#E6847E');
+  });
+
+  it('shows offline cached-data messaging with a retry action when quote data exists', () => {
+    stocksState.items = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        currentPrice: 214.8,
+        changePercent: 1.23,
+      },
+    ];
+    stocksState.chartError = 'Offline';
+    stocksState.chartSymbol = 'AAPL';
+
+    renderWithTheme(<StockChartScreen />);
+
+    expect(screen.getByText("You're offline. Showing cached data.")).toBeTruthy();
+    fireEvent.press(screen.getByTestId('stock-chart-inline-retry-button'));
+    expect(stocksState.loadChart).toHaveBeenCalledWith('AAPL', '1W');
+  });
+
+  it('navigates to CreateAlert from the premium action row', () => {
+    stocksState.items = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        currentPrice: 214.8,
+        changePercent: 1.23,
+      },
+    ];
+    stocksState.chartData = chartPoints;
+
+    renderWithTheme(<StockChartScreen />);
+
+    fireEvent.press(screen.getByTestId('stock-chart-create-alert-button'));
+    expect(navigation.navigate).toHaveBeenCalledWith('Alerts', {
+      screen: 'CreateAlert',
+      params: { symbol: 'AAPL', currentPrice: 214.8 },
+    });
+  });
+});
+
+describe('calculateYAxisRange', () => {
+  it('calculates min and max with 5% padding from data range', () => {
+    const points: StockChartPoint[] = [
+      { timestamp: '2026-05-29T10:00:00.000Z', open: 100, high: 110, low: 95, close: 105 },
+      { timestamp: '2026-05-29T10:15:00.000Z', open: 105, high: 115, low: 102, close: 110 },
+      { timestamp: '2026-05-29T10:30:00.000Z', open: 110, high: 120, low: 108, close: 115 },
+    ];
+
+    const result = calculateYAxisRange(points);
+
+    // min = 95, max = 120, range = 25
+    // 5% padding = 1.25
+    // minValue = 95 - 1.25 = 93.75
+    // maxValue = 120 + 1.25 = 121.25
+    expect(result.min).toBeCloseTo(93.75, 2);
+    expect(result.max).toBeCloseTo(121.25, 2);
+  });
+
+  it('returns zero range for empty data', () => {
+    const result = calculateYAxisRange([]);
+    expect(result.min).toBe(0);
+    expect(result.max).toBe(0);
+  });
+
+  it('handles single data point with padding', () => {
+    const points: StockChartPoint[] = [
+      { timestamp: '2026-05-29T10:00:00.000Z', open: 100, high: 100, low: 100, close: 100 },
+    ];
+
+    const result = calculateYAxisRange(points);
+
+    // min = max = 100, range = 0, padding = 0
+    // But we want at least some padding for visibility; fallback to 1% of value
+    expect(result.min).toBeCloseTo(99, 2);
+    expect(result.max).toBeCloseTo(101, 2);
   });
 });

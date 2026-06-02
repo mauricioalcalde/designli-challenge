@@ -1,4 +1,4 @@
-import type { StockListing, StockChartPoint, ChartRange } from '@designli-challenge/shared';
+import type { StockListing, StockChartPoint } from '@designli-challenge/shared';
 import { createStocksStore } from '../src/application/stocks.store';
 import type { StockSnapshotStorage } from '../src/domain/stock-snapshot-storage.port';
 import type { StocksRepository } from '../src/domain/stocks.repository.port';
@@ -33,6 +33,8 @@ describe('stocks.store', () => {
     mockSnapshotStorage = {
       get: jest.fn().mockReturnValue(null),
       set: jest.fn(),
+      appendHistory: jest.fn(),
+      getHistory: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StockSnapshotStorage>;
 
     useStocksStore = createStocksStore(mockStocksRepo, mockSnapshotStorage, now);
@@ -87,6 +89,8 @@ describe('stocks.store', () => {
     expect(useStocksStore.getState().isStale).toBe(true);
     expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-28T10:00:00.000Z');
     expect(useStocksStore.getState().error).toBeNull();
+    expect(useStocksStore.getState().staleReason).toBe('network');
+    expect(useStocksStore.getState().staleMessage).toBe("You're offline. Showing cached data.");
   });
 
   it('transitions isRefreshing and replaces items after refresh success', async () => {
@@ -146,6 +150,22 @@ describe('stocks.store', () => {
     expect(useStocksStore.getState().isStale).toBe(true);
     expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-28T22:30:00.000Z');
     expect(useStocksStore.getState().error).toBeNull();
+    expect(useStocksStore.getState().staleReason).toBe('network');
+  });
+
+  it('classifies provider fallback separately from offline fallback', async () => {
+    mockSnapshotStorage.get.mockReturnValue({
+      items: listings,
+      savedAt: '2026-05-28T10:00:00.000Z',
+    });
+    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('403 forbidden from provider'));
+
+    await useStocksStore.getState().load();
+
+    expect(useStocksStore.getState().staleReason).toBe('provider');
+    expect(useStocksStore.getState().staleMessage).toBe(
+      'Live provider unavailable. Showing cached data.',
+    );
   });
 
   // ---- chart slice ----
@@ -185,6 +205,8 @@ describe('stocks.store', () => {
     mockSnapshotStorage = {
       get: jest.fn().mockReturnValue(null),
       set: jest.fn(),
+      appendHistory: jest.fn(),
+      getHistory: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StockSnapshotStorage>;
 
     useStocksStore = createStocksStore(mockStocksRepo, mockSnapshotStorage, now);
@@ -211,6 +233,33 @@ describe('stocks.store', () => {
     expect(useStocksStore.getState().chartError).toBe('Network error');
     expect(useStocksStore.getState().chartData).toEqual([]);
     expect(useStocksStore.getState().chartSymbol).toBe('MSFT');
+  });
+
+  it('loadChart fallback respects the selected range instead of leaking older history', async () => {
+    const dateNowSpy = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(new Date('2026-05-29T16:40:00.000Z').getTime());
+
+    mockSnapshotStorage.getHistory.mockReturnValue([
+      {
+        symbol: 'AAPL',
+        price: 180,
+        timestamp: '2026-05-01T10:00:00.000Z',
+      },
+      {
+        symbol: 'AAPL',
+        price: 214.8,
+        timestamp: '2026-05-29T16:35:00.000Z',
+      },
+    ]);
+    mockStocksRepo.chart.mockRejectedValue(new Error('403 forbidden'));
+
+    await useStocksStore.getState().loadChart('AAPL', '1D');
+
+    expect(useStocksStore.getState().chartData).toHaveLength(1);
+    expect(useStocksStore.getState().chartData[0]?.close).toBe(214.8);
+
+    dateNowSpy.mockRestore();
   });
 
   it('loadChart discards stale responses when a newer request finishes first', async () => {

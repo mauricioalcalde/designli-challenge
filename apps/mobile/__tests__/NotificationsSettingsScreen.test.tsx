@@ -16,10 +16,15 @@ jest.mock('react-native-mmkv', () => ({
 }));
 
 const mockUseNotificationsStore = jest.fn();
+const mockUseConnectivity = jest.fn();
 
 jest.mock('../src/data/container', () => ({
   useNotificationsStore: (selector: (state: NotificationsState) => unknown) =>
     mockUseNotificationsStore(selector),
+}));
+
+jest.mock('../src/presentation/hooks/useConnectivity', () => ({
+  useConnectivity: () => mockUseConnectivity(),
 }));
 
 function renderWithTheme(ui: React.ReactElement) {
@@ -30,6 +35,7 @@ describe('NotificationsSettingsScreen', () => {
   let state: NotificationsState;
 
   beforeEach(() => {
+    mockUseConnectivity.mockReturnValue(true);
     state = {
       permissionStatus: 'unknown',
       isSupported: true,
@@ -51,6 +57,12 @@ describe('NotificationsSettingsScreen', () => {
     jest.clearAllMocks();
   });
 
+  it('refreshes the notification status on mount', () => {
+    renderWithTheme(<NotificationsSettingsScreen />);
+
+    expect(state.refreshStatus).toHaveBeenCalledTimes(1);
+  });
+
   it('shows a loading state before readiness resolves', () => {
     renderWithTheme(<NotificationsSettingsScreen />);
 
@@ -63,43 +75,42 @@ describe('NotificationsSettingsScreen', () => {
     renderWithTheme(<NotificationsSettingsScreen />);
 
     expect(screen.getByTestId('notifications-unsupported-state')).toBeTruthy();
-    expect(screen.getByText('Notifications unavailable')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Use a native iOS or Android development build on a supported device to continue.',
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText('Notifications not supported')).toBeTruthy();
+    expect(screen.queryByTestId('notifications-primary-action')).toBeNull();
   });
 
-  it('shows denied guidance and keeps the primary action visible', () => {
+  it('shows disabled guidance and the enable CTA', () => {
     state.permissionStatus = 'denied';
 
     renderWithTheme(<NotificationsSettingsScreen />);
 
-    expect(screen.getByTestId('notifications-denied-state')).toBeTruthy();
+    expect(screen.getByTestId('notifications-status-card')).toBeTruthy();
+    expect(screen.getByText('Notifications are disabled')).toBeTruthy();
+    expect(screen.getByText('Get notified when your alerts are triggered')).toBeTruthy();
+    expect(screen.getByText('Enable Notifications')).toBeTruthy();
     expect(screen.getByTestId('notifications-primary-action')).toBeTruthy();
   });
 
-  it('shows a registration failure from the store', () => {
+  it('shows a retryable sync failure from the store', () => {
     state.permissionStatus = 'granted';
     state.tokenStatus = 'error';
     state.error = 'Unauthorized';
 
     renderWithTheme(<NotificationsSettingsScreen />);
 
-    expect(screen.getByTestId('notifications-error-state')).toBeTruthy();
-    expect(screen.getByText('Unauthorized')).toBeTruthy();
+    expect(screen.getByTestId('notifications-sync-error')).toBeTruthy();
+    expect(screen.getByText('Sync failed. Tap to retry.')).toBeTruthy();
   });
 
-  it('shows a registered success state', () => {
+  it('shows an enabled state with the manage settings CTA', () => {
     state.permissionStatus = 'granted';
     state.tokenStatus = 'registered';
     state.lastRegisteredAt = '2026-05-29T18:45:00.000Z';
 
     renderWithTheme(<NotificationsSettingsScreen />);
 
-    expect(screen.getByTestId('notifications-registered-state')).toBeTruthy();
-    expect(screen.getByText('Device registered')).toBeTruthy();
+    expect(screen.getByText('Notifications are enabled')).toBeTruthy();
+    expect(screen.getByText('Manage Settings')).toBeTruthy();
   });
 
   it('shows a spinner on the CTA while registration is running', () => {
@@ -121,6 +132,20 @@ describe('NotificationsSettingsScreen', () => {
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('notifications-primary-action'));
+    });
+
+    expect(state.requestPermissionAndRegister).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries failed sync when the retry action is pressed', async () => {
+    state.permissionStatus = 'granted';
+    state.tokenStatus = 'error';
+    state.error = 'Unauthorized';
+
+    renderWithTheme(<NotificationsSettingsScreen />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('notifications-sync-error-action'));
     });
 
     expect(state.requestPermissionAndRegister).toHaveBeenCalledTimes(1);

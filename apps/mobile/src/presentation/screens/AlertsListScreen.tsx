@@ -190,18 +190,11 @@ export function AlertsListScreen() {
           />
 
           {combinedAlerts.length === 0 ? (
-            <View style={styles.emptyStateWrap}>
-              <EmptyState
-                title="No alerts yet. Create your first alert."
-                message="Start with one price level and we’ll keep watch for you."
-                testID="alerts-list-empty-state"
-              />
-              <Button
-                title="Create Alert"
-                onPress={navigateToCreate}
-                testID="alerts-list-empty-create-button"
-              />
-            </View>
+            <EmptyState
+              title="No alerts yet. Create your first alert."
+              message="Start with one price level and we'll keep watch for you."
+              testID="alerts-list-empty-state"
+            />
           ) : (
             <View style={styles.list} testID="alerts-list-state">
               <Text style={[styles.sectionTitle, { color: tokens.colors.text.primary }]}>

@@ -1,5 +1,6 @@
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/useTheme';
 import logoDesignli from '../../../../logoDesignli.jpeg';
 
@@ -7,8 +8,9 @@ interface MarketTopBarProps {
   onRefresh: () => void;
 }
 
-export function MarketTopBar({ onRefresh }: MarketTopBarProps) {
+export function MarketTopBar({ onRefresh: _onRefresh }: MarketTopBarProps) {
   const { tokens } = useTheme();
+  const navigation = useNavigation<any>();
 
   return (
     <View style={styles.row}>
@@ -20,12 +22,16 @@ export function MarketTopBar({ onRefresh }: MarketTopBarProps) {
       />
 
       <TouchableOpacity
-        onPress={onRefresh}
+        onPress={() =>
+          navigation.navigate('Profile', {
+            screen: 'NotificationsSettings',
+          })
+        }
         activeOpacity={0.7}
         style={styles.iconButton}
-        testID="stocks-topbar-refresh"
+        testID="stocks-topbar-notifications"
       >
-        <Ionicons name="refresh-outline" size={20} color={tokens.colors.text.secondary} />
+        <Ionicons name="notifications-outline" size={20} color={tokens.colors.text.secondary} />
       </TouchableOpacity>
     </View>
   );

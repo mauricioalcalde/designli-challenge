@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Text, View } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import { useTheme } from '../src/presentation/theme/useTheme';
 
@@ -30,12 +30,19 @@ function ThemeConsumer() {
   return (
     <View testID="theme-consumer">
       <Text testID="mode">{mode}</Text>
-      <Text testID="bg-color">{tokens.colors.background}</Text>
-      <Text testID="text-color">{tokens.colors.text}</Text>
+      <Text testID="bg-color">{tokens.colors.bg.canvas}</Text>
+      <Text testID="surface-color">{tokens.colors.bg.surface}</Text>
+      <Text testID="text-color">{tokens.colors.text.primary}</Text>
       <Text testID="primary-color">{tokens.colors.primary}</Text>
+      <Text testID="brand-coral">{tokens.colors.brand.coral[500]}</Text>
+      <Text testID="brand-navy">{tokens.colors.brand.navy[900]}</Text>
       <Text testID="spacing-md">{tokens.spacing.md}</Text>
-      <Text testID="h1-size">{tokens.typography.h1.fontSize}</Text>
-      <Text testID="radius-sm">{tokens.radii.sm}</Text>
+      <Text testID="spacing-5xl">{tokens.spacing['5xl']}</Text>
+      <Text testID="display-size">{tokens.typography.display.fontSize}</Text>
+      <Text testID="button-font">{tokens.typography.button.fontFamily}</Text>
+      <Text testID="radius-card">{tokens.radius.card}</Text>
+      <Text testID="radius-chip">{tokens.radius.chip}</Text>
+      <Text testID="elevation-medium">{tokens.elevation.medium.elevation}</Text>
       <Button testID="toggle-btn" title="Toggle" onPress={toggle} />
     </View>
   );
@@ -51,56 +58,7 @@ describe('ThemeProvider & useTheme', () => {
   });
 
   // ----- Rendering & default mode -----
-  it('renders children and provides light theme tokens by default', () => {
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>,
-    );
-
-    // Mode defaults to light
-    expect(screen.getByTestId('mode').props.children).toBe('light');
-
-    // Light palette: background is white, text is dark
-    expect(screen.getByTestId('bg-color').props.children).toBe('#FFFFFF');
-    expect(screen.getByTestId('text-color').props.children).toBe('#111827');
-    expect(screen.getByTestId('primary-color').props.children).toBe('#2563EB');
-
-    // Spacing token
-    expect(screen.getByTestId('spacing-md').props.children).toBe(16);
-
-    // Typography token — h1 fontSize > body
-    expect(screen.getByTestId('h1-size').props.children).toBe(28);
-
-    // Radii token
-    expect(screen.getByTestId('radius-sm').props.children).toBe(4);
-  });
-
-  // ----- Toggle light → dark -----
-  it('toggle switches from light to dark and updates all tokens', () => {
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>,
-    );
-
-    expect(screen.getByTestId('mode').props.children).toBe('light');
-    expect(screen.getByTestId('bg-color').props.children).toBe('#FFFFFF');
-
-    // Toggle to dark
-    fireEvent.press(screen.getByTestId('toggle-btn'));
-
-    expect(screen.getByTestId('mode').props.children).toBe('dark');
-    // Dark palette: background is dark, text is light
-    expect(screen.getByTestId('bg-color').props.children).toBe('#121212');
-    expect(screen.getByTestId('text-color').props.children).toBe('#F9FAFB');
-  });
-
-  // ----- Toggle dark → light -----
-  it('toggle switches from dark back to light', () => {
-    // Pre-set MMKV so ThemeProvider hydrates to dark
-    mmkvStore['theme_preference'] = 'dark';
-
+  it('renders children and provides premium dark theme tokens by default', () => {
     render(
       <ThemeProvider>
         <ThemeConsumer />
@@ -108,14 +66,51 @@ describe('ThemeProvider & useTheme', () => {
     );
 
     expect(screen.getByTestId('mode').props.children).toBe('dark');
+    expect(screen.getByTestId('bg-color').props.children).toBe('#111531');
+    expect(screen.getByTestId('surface-color').props.children).toBe('#171D3D');
+    expect(screen.getByTestId('text-color').props.children).toBe('#F7F8FC');
+    expect(screen.getByTestId('primary-color').props.children).toBe('#E6847E');
+    expect(screen.getByTestId('brand-coral').props.children).toBe('#E6847E');
+    expect(screen.getByTestId('brand-navy').props.children).toBe('#111531');
+    expect(screen.getByTestId('spacing-md').props.children).toBe(12);
+    expect(screen.getByTestId('spacing-5xl').props.children).toBe(48);
+    expect(screen.getByTestId('display-size').props.children).toBe(32);
+    expect(screen.getByTestId('button-font').props.children).toBe('Inter');
+    expect(screen.getByTestId('radius-card').props.children).toBe(18);
+    expect(screen.getByTestId('radius-chip').props.children).toBe(999);
+    expect(screen.getByTestId('elevation-medium').props.children).toBe(4);
+  });
+
+  it('toggle switches from dark to light and updates semantic surfaces', () => {
+    render(
+      <ThemeProvider>
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId('mode').props.children).toBe('dark');
+    expect(screen.getByTestId('bg-color').props.children).toBe('#111531');
 
     fireEvent.press(screen.getByTestId('toggle-btn'));
 
     expect(screen.getByTestId('mode').props.children).toBe('light');
-    expect(screen.getByTestId('bg-color').props.children).toBe('#FFFFFF');
+    expect(screen.getByTestId('bg-color').props.children).not.toBe('#111531');
+    expect(screen.getByTestId('text-color').props.children).not.toBe('#F7F8FC');
   });
 
-  // ----- MMKV persistence on toggle -----
+  it('hydrates light mode from MMKV when explicitly persisted', () => {
+    mmkvStore['theme_preference'] = 'light';
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId('mode').props.children).toBe('light');
+    expect(screen.getByTestId('brand-coral').props.children).toBe('#E6847E');
+  });
+
   it('persists theme preference to MMKV on toggle', () => {
     render(
       <ThemeProvider>
@@ -123,20 +118,14 @@ describe('ThemeProvider & useTheme', () => {
       </ThemeProvider>,
     );
 
-    // Default: nothing saved yet or light
-    fireEvent.press(screen.getByTestId('toggle-btn'));
-
-    // After toggle to dark, MMKV should have 'dark'
-    expect(mmkvStore['theme_preference']).toBe('dark');
-
-    // Toggle again back to light
     fireEvent.press(screen.getByTestId('toggle-btn'));
     expect(mmkvStore['theme_preference']).toBe('light');
+
+    fireEvent.press(screen.getByTestId('toggle-btn'));
+    expect(mmkvStore['theme_preference']).toBe('dark');
   });
 
-  // ----- Hydration: dark mode persists across "restarts" -----
   it('hydrates dark mode from MMKV on mount', () => {
-    // Simulate a previous session saved dark
     mmkvStore['theme_preference'] = 'dark';
 
     const { unmount } = render(
@@ -146,11 +135,10 @@ describe('ThemeProvider & useTheme', () => {
     );
 
     expect(screen.getByTestId('mode').props.children).toBe('dark');
-    expect(screen.getByTestId('bg-color').props.children).toBe('#121212');
+    expect(screen.getByTestId('bg-color').props.children).toBe('#111531');
 
     unmount();
 
-    // "Restart" — re-mount with MMKV still holding 'dark'
     render(
       <ThemeProvider>
         <ThemeConsumer />
@@ -160,9 +148,7 @@ describe('ThemeProvider & useTheme', () => {
     expect(screen.getByTestId('mode').props.children).toBe('dark');
   });
 
-  // ----- First launch: no stored preference → light -----
-  it('defaults to light when no preference is stored', () => {
-    // Ensure MMKV is empty
+  it('defaults to dark when no preference is stored', () => {
     delete mmkvStore['theme_preference'];
 
     render(
@@ -171,12 +157,10 @@ describe('ThemeProvider & useTheme', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId('mode').props.children).toBe('light');
+    expect(screen.getByTestId('mode').props.children).toBe('dark');
   });
 
-  // ----- Error when used outside provider -----
   it('throws when useTheme is called outside ThemeProvider', () => {
-    // Suppress console.error for this expected error
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     expect(() => render(<ThemeConsumer />)).toThrow('useTheme must be used within a ThemeProvider');
@@ -184,8 +168,7 @@ describe('ThemeProvider & useTheme', () => {
     spy.mockRestore();
   });
 
-  // ----- Two toggles cycle correctly -----
-  it('cycles light → dark → light with two toggles', () => {
+  it('cycles dark → light → dark with two toggles', () => {
     render(
       <ThemeProvider>
         <ThemeConsumer />
@@ -193,25 +176,29 @@ describe('ThemeProvider & useTheme', () => {
     );
 
     fireEvent.press(screen.getByTestId('toggle-btn'));
-    expect(screen.getByTestId('mode').props.children).toBe('dark');
+    expect(screen.getByTestId('mode').props.children).toBe('light');
 
     fireEvent.press(screen.getByTestId('toggle-btn'));
-    expect(screen.getByTestId('mode').props.children).toBe('light');
+    expect(screen.getByTestId('mode').props.children).toBe('dark');
   });
 
-  // ----- Tokens are correctly typed and present -----
-  it('exposes all token groups from useTheme', () => {
+  it('exposes all premium token groups from useTheme', () => {
     function TokenInspector() {
       const { tokens } = useTheme();
 
       return (
         <View>
-          <Text testID="has-colors">{Object.keys(tokens.colors).length > 0 ? 'yes' : 'no'}</Text>
+          <Text testID="has-colors">
+            {Object.keys(tokens.colors.brand).length > 0 ? 'yes' : 'no'}
+          </Text>
           <Text testID="has-typography">
             {Object.keys(tokens.typography).length > 0 ? 'yes' : 'no'}
           </Text>
           <Text testID="has-spacing">{Object.keys(tokens.spacing).length > 0 ? 'yes' : 'no'}</Text>
-          <Text testID="has-radii">{Object.keys(tokens.radii).length > 0 ? 'yes' : 'no'}</Text>
+          <Text testID="has-radius">{Object.keys(tokens.radius).length > 0 ? 'yes' : 'no'}</Text>
+          <Text testID="has-elevation">
+            {Object.keys(tokens.elevation).length > 0 ? 'yes' : 'no'}
+          </Text>
         </View>
       );
     }
@@ -225,26 +212,21 @@ describe('ThemeProvider & useTheme', () => {
     expect(screen.getByTestId('has-colors').props.children).toBe('yes');
     expect(screen.getByTestId('has-typography').props.children).toBe('yes');
     expect(screen.getByTestId('has-spacing').props.children).toBe('yes');
-    expect(screen.getByTestId('has-radii').props.children).toBe('yes');
+    expect(screen.getByTestId('has-radius').props.children).toBe('yes');
+    expect(screen.getByTestId('has-elevation').props.children).toBe('yes');
   });
 
-  // ----- Dark mode tokens are different from light -----
-  it('provides different color tokens for dark vs light mode', () => {
+  it('keeps Inter typography roles available across theme modes', () => {
     render(
       <ThemeProvider>
         <ThemeConsumer />
       </ThemeProvider>,
     );
 
-    const lightBg = screen.getByTestId('bg-color').props.children;
-    const lightText = screen.getByTestId('text-color').props.children;
+    expect(screen.getByTestId('button-font').props.children).toBe('Inter');
 
     fireEvent.press(screen.getByTestId('toggle-btn'));
 
-    const darkBg = screen.getByTestId('bg-color').props.children;
-    const darkText = screen.getByTestId('text-color').props.children;
-
-    expect(lightBg).not.toBe(darkBg);
-    expect(lightText).not.toBe(darkText);
+    expect(screen.getByTestId('button-font').props.children).toBe('Inter');
   });
 });

@@ -33,3 +33,16 @@ coverage/
 
 # Generated code
 packages/shared/dist/
+
+# Local agent artifacts
+.atl/
+
+# AI/agent workflow artifacts — do not commit
+docs/
+CHALLENGE-CHECKLIST.md
+*.pdf
+openspec/changes/
+
+# Mobile build outputs
+dist-*/
+dist-*-debug/

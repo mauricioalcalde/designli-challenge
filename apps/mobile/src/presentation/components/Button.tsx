@@ -44,20 +44,21 @@ export function Button({
     case 'primary':
       containerStyle.push({
         backgroundColor: tokens.colors.primary,
+        ...tokens.elevation.low,
       });
       break;
     case 'secondary':
       containerStyle.push({
         backgroundColor: tokens.colors.surface,
         borderWidth: 1,
-        borderColor: tokens.colors.border,
+        borderColor: tokens.colors.border.subtle,
       });
       break;
     case 'outline':
       containerStyle.push({
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: tokens.colors.primary,
+        borderColor: tokens.colors.border.accent,
       });
       break;
   }
@@ -72,7 +73,7 @@ export function Button({
       ? '#FFFFFF'
       : variant === 'outline'
         ? tokens.colors.primary
-        : tokens.colors.text;
+        : tokens.colors.text.primary;
 
   return (
     <TouchableOpacity
@@ -90,7 +91,15 @@ export function Button({
         />
       )}
       <Text
-        style={[baseStyles.text, { color: textColor, fontSize: tokens.typography.body.fontSize }]}
+        style={[
+          baseStyles.text,
+          {
+            color: textColor,
+            fontSize: tokens.typography.button.fontSize,
+            lineHeight: tokens.typography.button.lineHeight,
+            fontFamily: tokens.typography.button.fontFamily,
+          },
+        ]}
       >
         {title}
       </Text>
@@ -105,7 +114,7 @@ const baseStyles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 48,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 14,
     gap: 8,
   },
   text: {

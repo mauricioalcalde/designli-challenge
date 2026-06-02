@@ -2,7 +2,7 @@ import type { StockListing, StockChartPoint, ChartRange } from '@designli-challe
 import { create } from 'zustand';
 import type { StockSnapshotStorage } from '../domain/stock-snapshot-storage.port';
 import type { StocksRepository } from '../domain/stocks.repository.port';
-import { StocksLoadError, StockChartError } from '../domain/stocks.errors';
+import { StocksLoadError } from '../domain/stocks.errors';
 
 export interface StocksState {
   // ---- list slice ----
@@ -12,6 +12,8 @@ export interface StocksState {
   isStale: boolean;
   lastUpdatedAt: string | null;
   error: string | null;
+  staleReason?: 'network' | 'provider' | 'unknown' | null;
+  staleMessage?: string | null;
   load: () => Promise<void>;
   refresh: () => Promise<void>;
 
@@ -34,6 +36,45 @@ export function createStocksStore(
   snapshotStorage: StockSnapshotStorage,
   now: () => string = () => new Date().toISOString(),
 ) {
+  const classifyFailure = (
+    message: string,
+  ): { reason: 'network' | 'provider' | 'unknown'; staleMessage: string } => {
+    const normalized = message.toLowerCase();
+
+    if (
+      normalized.includes('offline') ||
+      normalized.includes('network') ||
+      normalized.includes('timeout') ||
+      normalized.includes('timed out') ||
+      normalized.includes('failed to fetch') ||
+      normalized.includes('no response') ||
+      normalized.includes('internet')
+    ) {
+      return {
+        reason: 'network',
+        staleMessage: "You're offline. Showing cached data.",
+      };
+    }
+
+    if (
+      normalized.includes("don't have access") ||
+      normalized.includes('403') ||
+      normalized.includes('forbidden') ||
+      normalized.includes('provider') ||
+      normalized.includes('server')
+    ) {
+      return {
+        reason: 'provider',
+        staleMessage: 'Live provider unavailable. Showing cached data.',
+      };
+    }
+
+    return {
+      reason: 'unknown',
+      staleMessage: "We couldn't refresh market data. Showing cached data.",
+    };
+  };
+
   const syncSuccessState = (items: StockListing[]) => {
     const savedAt = now();
     snapshotStorage.set({ items, savedAt });
@@ -44,6 +85,8 @@ export function createStocksStore(
       isStale: false,
       lastUpdatedAt: savedAt,
       error: null,
+      staleReason: null,
+      staleMessage: null,
     };
   };
 
@@ -52,11 +95,15 @@ export function createStocksStore(
     const snapshot = snapshotStorage.get();
 
     if (snapshot) {
+      const failure = classifyFailure(loadError.message);
+
       return {
         items: snapshot.items,
         isStale: true,
         lastUpdatedAt: snapshot.savedAt,
         error: null,
+        staleReason: failure.reason,
+        staleMessage: failure.staleMessage,
       };
     }
 
@@ -65,6 +112,8 @@ export function createStocksStore(
       isStale: false,
       lastUpdatedAt: null,
       error: loadError.message,
+      staleReason: null,
+      staleMessage: null,
     };
   };
 
@@ -91,7 +140,7 @@ export function createStocksStore(
 
     const cutoff = Date.now() - rangeToWindowMs(range);
     const filtered = history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
-    const source = filtered.length > 1 ? filtered : history;
+    const source = filtered;
 
     return source.map((point, index, arr) => {
       const prev = arr[index - 1]?.price ?? point.price;
@@ -118,9 +167,11 @@ export function createStocksStore(
     isStale: false,
     lastUpdatedAt: null,
     error: null,
+    staleReason: null,
+    staleMessage: null,
 
     load: async () => {
-      set({ isLoading: true, error: null });
+      set({ isLoading: true, error: null, staleReason: null, staleMessage: null });
 
       try {
         const items = await stocksRepo.list();
@@ -131,7 +182,7 @@ export function createStocksStore(
     },
 
     refresh: async () => {
-      set({ isRefreshing: true, error: null });
+      set({ isRefreshing: true, error: null, staleReason: null, staleMessage: null });
 
       try {
         const items = await stocksRepo.list();
@@ -150,42 +201,45 @@ export function createStocksStore(
     chartCache: {},
 
     loadChart: async (symbol: string, range: ChartRange) => {
-      set({ chartSymbol: symbol, chartRange: range, chartIsLoading: true, chartError: null });
+      set({
+        chartSymbol: symbol,
+        chartRange: range,
+        chartData: [],
+        chartIsLoading: true,
+        chartError: null,
+      });
       const cacheKey = `${symbol}:${range}`;
 
-      try {
-        const data = await stocksRepo.chart(symbol, range);
+      // Always build chart from local quote snapshots (single source of truth)
+      // Finnhub free tier returns 403 for /stock/candle, so we rely on quote snapshots
+      // which are the same data source as Market Overview (ensures consistency)
+      const derivedChart = buildChartFromHistory(symbol, range);
 
-        // Discard stale responses: only apply if the store's current range
-        // still matches the range this request was sent for.
-        if (get().chartRange !== range || get().chartSymbol !== symbol) {
-          return;
-        }
-
-        set((state) => ({
-          chartData: data,
-          chartIsLoading: false,
-          chartError: null,
-          chartCache: {
-            ...state.chartCache,
-            [cacheKey]: data,
-          },
-        }));
-      } catch (error) {
-        // Discard stale error responses too
-        if (get().chartRange !== range || get().chartSymbol !== symbol) {
-          return;
-        }
-
-        const chartError = StockChartError.fromUnknown(error);
-        const derivedChart = buildChartFromHistory(symbol, range);
-        const cachedData = get().chartCache[cacheKey] ?? [];
+      if (derivedChart.length === 0) {
+        // No history yet - show empty state
         set({
-          chartData: cachedData.length > 0 ? cachedData : derivedChart,
+          chartData: [],
           chartIsLoading: false,
-          chartError: chartError.message,
+          chartError: 'No price history available yet. Keep the app open to collect data.',
         });
+        return;
       }
+
+      // Discard stale responses: only apply if the store's current range
+      // still matches the range this request was sent for.
+      if (get().chartRange !== range || get().chartSymbol !== symbol) {
+        return;
+      }
+
+      set((state) => ({
+        chartData: derivedChart,
+        chartIsLoading: false,
+        chartError: null,
+        chartCache: {
+          ...state.chartCache,
+          [cacheKey]: derivedChart,
+        },
+      }));
     },
   }));
 }

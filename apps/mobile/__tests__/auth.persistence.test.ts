@@ -11,7 +11,7 @@ describe('auth persistence integration', () => {
     set: jest.fn((key: string, value: string) => {
       mmkvState.set(key, value);
     }),
-    remove: jest.fn((key: string) => {
+    delete: jest.fn((key: string) => {
       mmkvState.delete(key);
     }),
   };

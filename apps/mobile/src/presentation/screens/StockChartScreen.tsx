@@ -102,9 +102,10 @@ export function StockChartScreen() {
 
       void sync();
 
+      // Poll every 10s for near real-time updates (single source of truth: quotes)
       const interval = setInterval(() => {
         void sync();
-      }, 30000);
+      }, 10000);
 
       return () => {
         active = false;
@@ -185,10 +186,10 @@ export function StockChartScreen() {
 
   const yAxisRange = useMemo(() => calculateYAxisRange(chartData), [chartData]);
 
-  const refreshChart = () => {
-    void refreshStocks();
-    void loadChart(symbol, chartRange);
-  };
+  const refreshChart = useCallback(async () => {
+    await refreshStocks();
+    await loadChart(symbol, chartRange);
+  }, [chartRange, loadChart, refreshStocks, symbol]);
 
   return (
     <ScreenContainer testID="stock-chart-screen">

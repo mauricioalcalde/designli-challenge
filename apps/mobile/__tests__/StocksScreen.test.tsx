@@ -66,12 +66,13 @@ describe('StocksScreen', () => {
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-loading-state')).toBeTruthy();
+    expect(screen.getByText('Market Overview')).toBeTruthy();
     // Skeleton cards should be visible during loading
     expect(screen.getByTestId('stocks-skeleton-card-1')).toBeTruthy();
     expect(screen.getByTestId('stocks-skeleton-card-2')).toBeTruthy();
   });
 
-  it('renders stock cards with symbol, name, price, and change badge', () => {
+  it('renders the premium market overview with summary tiles and stock cards', () => {
     state.items = [
       {
         symbol: 'AAPL',
@@ -84,11 +85,14 @@ describe('StocksScreen', () => {
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-list-state')).toBeTruthy();
-    expect(screen.getByText('AAPL')).toBeTruthy();
+    expect(screen.getByText('Market Overview')).toBeTruthy();
+    expect(screen.getByText('Track leaders, movers, and your next alert.')).toBeTruthy();
+    expect(screen.getByText('Total portfolio')).toBeTruthy();
+    expect(screen.getByText('Top gainer')).toBeTruthy();
+    expect(screen.getAllByText('AAPL')).toHaveLength(2);
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
-    expect(screen.getByText('$212.45')).toBeTruthy();
-    // Badge shows trend arrow + percentage
-    expect(screen.getByText('▲ +1.23%')).toBeTruthy();
+    expect(screen.getAllByText('$212.45')).toHaveLength(2);
+    expect(screen.getAllByText('+1.23%')).toHaveLength(2);
   });
 
   it('shows a negative trend badge for declining stocks', () => {
@@ -103,14 +107,15 @@ describe('StocksScreen', () => {
 
     renderWithTheme(<StocksScreen />);
 
-    expect(screen.getByText('▼ -0.47%')).toBeTruthy();
+    expect(screen.getAllByText('-0.47%')).toHaveLength(2);
   });
 
   it('shows an explicit empty state when the API returns no items', () => {
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-empty-state')).toBeTruthy();
-    expect(screen.getByText('No stocks available')).toBeTruthy();
+    expect(screen.getByText('No stocks on your radar yet')).toBeTruthy();
+    expect(screen.getByText('Pull to refresh to load the latest market movers.')).toBeTruthy();
   });
 
   it('shows a retryable error state when loading fails without items', () => {
@@ -119,7 +124,9 @@ describe('StocksScreen', () => {
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-error-state')).toBeTruthy();
-    fireEvent.press(screen.getByTestId('stocks-retry-button'));
+    expect(screen.getByText("We couldn't load the market right now.")).toBeTruthy();
+    expect(screen.queryByTestId('stocks-retry-button')).toBeNull();
+    fireEvent.press(screen.getByTestId('stocks-error-content-action-button'));
     expect(state.load).toHaveBeenCalledTimes(2);
   });
 
@@ -160,8 +167,8 @@ describe('StocksScreen', () => {
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-stale-banner')).toBeTruthy();
-    expect(screen.getByText('Showing your last saved stocks snapshot.')).toBeTruthy();
-    expect(screen.getByText(/Last updated/)).toBeTruthy();
+    expect(screen.getByText("You're offline. Showing cached data.")).toBeTruthy();
+    expect(screen.getByTestId('stocks-stale-retry-button')).toBeTruthy();
     expect(screen.queryByText('No internet connection')).toBeNull();
   });
 
@@ -177,7 +184,7 @@ describe('StocksScreen', () => {
 
     renderWithTheme(<StocksScreen />);
 
-    fireEvent.press(screen.getByTestId('stocks-row-AAPL'));
+    fireEvent.press(screen.getByTestId('stock-item-card-AAPL'));
     expect(mockNavigate).toHaveBeenCalledWith('StockChart', { symbol: 'AAPL' });
   });
 });

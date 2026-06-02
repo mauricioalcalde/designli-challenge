@@ -2,117 +2,92 @@
 
 ## Purpose
 
-Establish a reusable design system for the mobile app: theme provider, design tokens, and six shared components. Ensures visual consistency across all screens and enables dark mode via persisted user preference.
+Provide the premium mobile presentation foundation: a dark-first theme system, the approved Designli token set, and reusable primitives for consistent fintech-grade UX.
 
 **Domain layer**: presentation
 
 ## Requirements
 
-### Requirement: Theme Provider
+### Requirement: Premium Theme Provider
 
-The system **MUST** provide a React Context-based `ThemeProvider` that exposes `{ theme, toggleTheme, isDark }`. Themes **MUST** include `light` and `dark` variants. All descendant components **SHALL** consume theme values via a `useTheme()` hook.
+The system **MUST** provide a React Context-based `ThemeProvider` that exposes `{ theme, toggleTheme, isDark, tokens }`. The provider **MUST** hydrate persisted mode before first interactive paint and **MUST** default to dark when no preference exists.
 
-#### Scenario: Theme provider wraps app
+#### Scenario: Dark-first boot
 
-- **GIVEN** the app root wraps children in `<ThemeProvider>`
-- **WHEN** any descendant component calls `useTheme()`
-- **THEN** it receives `{ theme, toggleTheme, isDark }` without undefined values
+- **GIVEN** the app launches for the first time
+- **WHEN** the theme provider initializes
+- **THEN** dark tokens render before the first interactive screen
+- **AND** no light-first flash is visible
 
-#### Scenario: Toggle switches theme
+#### Scenario: Persisted mode is restored
 
-- **GIVEN** the current theme is `light`
-- **WHEN** `toggleTheme()` is called
-- **THEN** `isDark` becomes `true` and `theme` reflects `dark` palette values
-- **AND** calling `toggleTheme()` again returns to `light`
+- **GIVEN** the user previously stored a theme preference
+- **WHEN** the app launches again
+- **THEN** the stored mode is restored before descendant screens render
 
-### Requirement: Design Tokens
+### Requirement: Premium Token System
 
-The theme object **MUST** include:
+The system **MUST** define premium tokens using the Designli navy/coral palette, supporting accent/semantic colors, Inter `400/500/600/700`, spacing `4/8/12/16/20/24/32/40/48`, radii `14/14/18/24/999`, and elevation levels used by cards, tabs, and chart surfaces.
 
-| Token Group  | Contents                                                                                                                   |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `colors`     | `primary`, `secondary`, `background`, `surface`, `text`, `error`, `success`, `warning`, `border`, `chartLine`, `chartFill` |
-| `typography` | `h1`–`h4`, `body`, `caption` with `{ fontSize, fontWeight, lineHeight }`                                                   |
-| `spacing`    | `xs(4)`, `sm(8)`, `md(16)`, `lg(24)`, `xl(32)`                                                                             |
-| `radii`      | `sm(4)`, `md(8)`, `lg(12)`, `full(9999)`                                                                                   |
-| `shadows`    | `none`, `sm`, `md`, `lg`                                                                                                   |
+#### Scenario: Token groups are available
 
-#### Scenario: Color tokens adapt to theme
+- **GIVEN** a presentation component consumes `useTheme()`
+- **WHEN** it reads tokens
+- **THEN** it can access semantic `bg`, `text`, `border`, `brand`, `accent`, `semantic`, `chart`, `spacing`, `radius`, `typography`, and `elevation` groups
 
-- **GIVEN** `isDark` is `true`
-- **WHEN** `useTheme()` is called
-- **THEN** `theme.colors.background` **MUST** be a dark color (e.g., `#121212`)
-- **AND** `theme.colors.text` **MUST** be a light color for readability
+#### Scenario: Typography uses Inter
 
-#### Scenario: Typography scale is consistent
+- **GIVEN** a component applies a typography role from tokens
+- **WHEN** it renders text
+- **THEN** the role uses the Inter family and the defined premium size hierarchy
 
-- **GIVEN** `theme.typography.h1`
-- **WHEN** applied to a `<Text>` component
-- **THEN** it **MUST** have `fontSize` larger than `h2`, which is larger than `body`
+### Requirement: Premium Primitives Library
 
-### Requirement: Theme Persistence
+The system **MUST** provide reusable premium primitives for shared presentation concerns, including `Button`, `Input`, `Card`, `Badge`, `Chip`, `Banner`, `OfflineBanner`, `FeedbackState`, `EmptyState`, `ScreenContainer`, `SectionHeader`, `StatTile`, `PriceHero`, and `ChartCard`. `ScreenContainer` **MUST** include `SafeAreaView`. `Banner` message text **MUST** use body-level typography. `Skeleton` **MUST** support responsive widths.
 
-The selected theme **MUST** be persisted via MMKV and restored on app launch before any screen renders, preventing a flash of wrong theme.
+#### Scenario: Input status rendering
 
-#### Scenario: Dark mode persists across restarts
+- **GIVEN** an input with helper or error text
+- **WHEN** it receives focus or validation failure
+- **THEN** focus styling uses the primary coral token
+- **AND** helper or error copy remains legible on dark surfaces
 
-- **GIVEN** the user toggled dark mode on in a previous session
-- **WHEN** the app launches
-- **THEN** the dark theme is applied immediately without a visible flash
-- **AND** `isDark` is `true`
+#### Scenario: Shared feedback language
 
-#### Scenario: First launch defaults to light
+- **GIVEN** a screen needs offline, pending-sync, success, or retry feedback
+- **WHEN** it renders shared primitives
+- **THEN** the visual language is consistent across screens
 
-- **GIVEN** the app has never been launched
-- **WHEN** the app starts
-- **THEN** `light` theme is the default
+#### Scenario: ScreenContainer provides safe-area insets
 
-### Requirement: Reusable Components
+- **GIVEN** a screen wraps its content in `ScreenContainer`
+- **WHEN** the screen renders on a device with notches or home indicators
+- **THEN** content is automatically inset from all safe-area edges
+- **AND** the screen does not need to apply manual padding for device insets
 
-The system **MUST** provide six reusable components, each handling at minimum a default and disabled variant:
+#### Scenario: Banner message uses body typography
 
-| Component    | Variants                                                                        |
-| ------------ | ------------------------------------------------------------------------------- |
-| `Button`     | `primary`, `secondary`, `outline`; `disabled`; `loading` (spinner + text)       |
-| `Card`       | elevated with shadow, optional `onPress`                                        |
-| `Badge`      | `success`, `warning`, `error`, `info`                                           |
-| `Input`      | `default`, `error` (red border + message), `disabled`                           |
-| `EmptyState` | icon, title, subtitle, optional `action` button                                 |
-| `Skeleton`   | animated placeholder matching child dimensions; `circle`, `rect`, `text` shapes |
+- **GIVEN** a `Banner` component renders with a message string
+- **WHEN** the banner is displayed
+- **THEN** the message text uses body-level typography (not title or heading)
+- **AND** the text remains legible on dark surfaces
 
-#### Scenario: Button loading state
+#### Scenario: Skeleton supports responsive widths
 
-- **GIVEN** a `<Button loading>` is rendered
-- **WHEN** the button is displayed
-- **THEN** a spinner is visible alongside the button text
-- **AND** the button is non-interactive (onPress does not fire)
+- **GIVEN** a `Skeleton` component is used in a card or list layout
+- **WHEN** the parent container width changes (e.g., device rotation, split view)
+- **THEN** the skeleton width adapts to the available space
+- **AND** no hardcoded pixel width causes overflow or underflow
 
-#### Scenario: Input error state
+### Requirement: Design System Test Coverage
 
-- **GIVEN** an `<Input error="Required field">` is rendered
-- **WHEN** displayed
-- **THEN** the input border is `theme.colors.error`
-- **AND** the error message is displayed below the input
+The system **MUST** keep automated coverage for the theme provider and shared primitives, including dark-first hydration, token shape, component variants, shared feedback states, SafeAreaView integration in ScreenContainer, Banner body typography, and Skeleton responsive widths.
 
-#### Scenario: Skeleton matches content shape
+#### Scenario: Theme and component suites pass
 
-- **GIVEN** a `<Skeleton variant="rect" width={200} height={20}>` is rendered
-- **WHEN** displayed
-- **THEN** a pulsing placeholder rectangle of 200×20 is visible
-- **AND** it has no interaction behavior
-
-#### Scenario: EmptyState with action
-
-- **GIVEN** an `<EmptyState title="No alerts" action={{ label: "Create", onPress }}>` is rendered
-- **WHEN** the user taps the action button
-- **THEN** `onPress` is called
-
-### Requirement: Component Test Coverage
-
-All six reusable components **MUST** have test coverage verifying default render, each variant, and disabled/loading/error states where applicable.
-
-#### Scenario: Component variant tests
-
-- **GIVEN** the test suite for `<Button>`
-- **WHEN** tests run
-- **THEN** at minimum: renders primary, renders secondary, renders outline, renders disabled (non-interactive), renders loading (spinner visible)
+- **GIVEN** the mobile workspace is set up
+- **WHEN** the targeted theme and component suites run
+- **THEN** the premium theme and primitive contracts pass without introducing new TypeScript errors in changed files
+- **AND** ScreenContainer renders within safe-area bounds in test
+- **AND** Skeleton adapts width in test
+- **AND** Banner message renders at body typography size in test

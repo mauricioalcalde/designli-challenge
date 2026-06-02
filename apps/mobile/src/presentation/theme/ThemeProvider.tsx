@@ -1,5 +1,5 @@
 import { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
-import { createMMKV } from 'react-native-mmkv';
+import { createStorage } from '../../data/mmkv';
 import { darkTokens, lightTokens } from './tokens';
 import type { ThemeContextValue, ThemeMode } from './types';
 
@@ -25,7 +25,7 @@ export interface ThemeStorage {
 }
 
 function createDefaultStorage(): ThemeStorage {
-  const mmkv = createMMKV();
+  const mmkv = createStorage();
   return {
     getString: (key) => mmkv.getString(key),
     set: (key, value) => mmkv.set(key, value),
@@ -34,7 +34,7 @@ function createDefaultStorage(): ThemeStorage {
 
 function readPersistedMode(storage: ThemeStorage): ThemeMode {
   const saved = storage.getString(THEME_KEY);
-  return saved === 'dark' ? 'dark' : 'light';
+  return saved === 'light' ? 'light' : 'dark';
 }
 
 // ---------------------------------------------------------------------------
@@ -48,13 +48,13 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, storage }: ThemeProviderProps) {
-  const s = storage ?? createDefaultStorage();
+  const s = useMemo(() => storage ?? createDefaultStorage(), [storage]);
 
   const [mode, setMode] = useState<ThemeMode>(() => readPersistedMode(s));
 
   const toggle = useCallback(() => {
     setMode((prev) => {
-      const next: ThemeMode = prev === 'light' ? 'dark' : 'light';
+      const next: ThemeMode = prev === 'dark' ? 'light' : 'dark';
       s.set(THEME_KEY, next);
       return next;
     });

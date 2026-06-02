@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AppNavigator } from '../src/presentation/navigation/AppNavigator';
 import type { AlertsState } from '../src/application/alerts.store';
 import type { NotificationsState } from '../src/application/notifications.store';
@@ -40,7 +40,16 @@ jest.mock('../src/presentation/hooks/useConnectivity', () => ({
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
-  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+  createNavigationContainerRef: () => ({
+    isReady: () => true,
+    resetRoot: jest.fn(),
+  }),
+  useNavigation: () => ({
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+    replace: jest.fn(),
+    getParent: jest.fn(),
+  }),
   useRoute: () => ({ params: {} }),
 }));
 
@@ -48,22 +57,39 @@ jest.mock('@react-navigation/native-stack', () => {
   const React = jest.requireActual('react');
   const { Text, View } = jest.requireActual('react-native');
 
-  const Screen = ({
-    name,
-    component: Component,
-  }: {
-    name: string;
-    component: React.ComponentType;
-  }) => (
-    <View>
-      <Text>{name}</Text>
-      <Component />
-    </View>
-  );
+  const Screen = () => null;
+
+  const Navigator = ({ children }: { children: React.ReactNode }) => {
+    const screens = React.Children.toArray(children).filter(React.isValidElement) as Array<
+      React.ReactElement<{
+        component?: React.ComponentType;
+        getComponent?: () => React.ComponentType;
+        name: string;
+      }>
+    >;
+    const activeScreen = screens[0];
+
+    if (!activeScreen) {
+      return null;
+    }
+
+    const ActiveComponent = activeScreen.props.component ?? activeScreen.props.getComponent?.();
+
+    if (!ActiveComponent) {
+      return null;
+    }
+
+    return (
+      <View>
+        <Text>{activeScreen.props.name}</Text>
+        <ActiveComponent />
+      </View>
+    );
+  };
 
   return {
     createNativeStackNavigator: () => ({
-      Navigator: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      Navigator,
       Screen,
     }),
   };
@@ -189,8 +215,20 @@ describe('auth shell runtime flow', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   it('transitions from successful login into rendered tabs in one runtime path', async () => {
     const { rerender } = render(<AppNavigator />);
+
+    act(() => {
+      jest.advanceTimersByTime(1600);
+    });
 
     fireEvent.changeText(screen.getByTestId('email-input-text-field'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input-text-field'), 'securePass1');
@@ -203,7 +241,7 @@ describe('auth shell runtime flow', () => {
     expect(screen.queryByTestId('auth-submit-button')).toBeNull();
     expect(screen.getAllByText('Stocks').length).toBeGreaterThan(0);
     expect(screen.getByText('Alerts')).toBeTruthy();
-    expect(screen.getByText('Notifications')).toBeTruthy();
+    expect(screen.getByText('Profile')).toBeTruthy();
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
   });
 
@@ -214,6 +252,10 @@ describe('auth shell runtime flow', () => {
     });
 
     const { rerender } = render(<AppNavigator />);
+
+    act(() => {
+      jest.advanceTimersByTime(1600);
+    });
 
     fireEvent.changeText(screen.getByTestId('email-input-text-field'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input-text-field'), 'securePass1');
@@ -230,6 +272,10 @@ describe('auth shell runtime flow', () => {
     authState.isAuthenticated = true;
     const { rerender } = render(<AppNavigator />);
 
+    act(() => {
+      jest.advanceTimersByTime(1600);
+    });
+
     expect(screen.getByText('Apple Inc.')).toBeTruthy();
 
     authState.isAuthenticated = false;
@@ -238,6 +284,19 @@ describe('auth shell runtime flow', () => {
     expect(screen.getByText('Auth')).toBeTruthy();
     expect(screen.queryByText('Apple Inc.')).toBeNull();
     expect(screen.queryByText('Alerts')).toBeNull();
-    expect(screen.queryByText('Notifications')).toBeNull();
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  it('shows the splash wordmark before revealing the auth shell', () => {
+    render(<AppNavigator />);
+
+    expect(screen.getByText('Designli')).toBeTruthy();
+    expect(screen.queryByTestId('auth-submit-button')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(1600);
+    });
+
+    expect(screen.getByTestId('auth-submit-button')).toBeTruthy();
   });
 });

@@ -3,18 +3,18 @@ import { MmkvTokenStorage } from '../src/data/token-storage.mmkv';
 interface MockMmkvStorage {
   getString: jest.Mock<string | undefined, [string]>;
   set: jest.Mock<void, [string, string]>;
-  remove: jest.Mock<void, [string]>;
+  delete: jest.Mock<void, [string]>;
 }
 
 describe('MmkvTokenStorage', () => {
   const mockGetString = jest.fn();
   const mockSet = jest.fn();
-  const mockRemove = jest.fn();
+  const mockDelete = jest.fn();
 
   const mockMMKV: MockMmkvStorage = {
     getString: mockGetString,
     set: mockSet,
-    remove: mockRemove,
+    delete: mockDelete,
   };
 
   let storage: MmkvTokenStorage;
@@ -43,6 +43,14 @@ describe('MmkvTokenStorage', () => {
 
   it('clear removes the auth_token key from MMKV', () => {
     storage.clear();
-    expect(mockRemove).toHaveBeenCalledWith('auth_token');
+    expect(mockDelete).toHaveBeenCalledWith('auth_token');
+  });
+
+  it('clear does not throw when storage is already empty', () => {
+    mockDelete.mockImplementation(() => {
+      // MMKV delete is a no-op when key does not exist
+    });
+    expect(() => storage.clear()).not.toThrow();
+    expect(mockDelete).toHaveBeenCalledWith('auth_token');
   });
 });

@@ -4,14 +4,20 @@ import { Alert } from '../../domain/alerts/alert.entity';
 import { AlertDirection } from '../../domain/alerts/alert-direction.vo';
 import { AlertAlreadyExistsError, AlertNotFoundError } from '../../domain/alerts/alert-errors';
 import { IAlertRepository } from './ports/alert-repository.port';
+import { AlertEvaluatorService } from './alert-evaluator.service';
 
 @Injectable()
 export class AlertsService {
   constructor(
     @Inject(IAlertRepository) private readonly alertRepository: IAlertRepository,
+    @Inject(AlertEvaluatorService) private readonly alertEvaluator: AlertEvaluatorService,
   ) {}
 
-  async create(userId: number, clientRequestId: string, dto: CreateAlertDTO): Promise<AlertResponse> {
+  async create(
+    userId: number,
+    clientRequestId: string,
+    dto: CreateAlertDTO,
+  ): Promise<AlertResponse> {
     const existing = await this.alertRepository.findByClientRequestId(userId, clientRequestId);
     if (existing) {
       throw new AlertAlreadyExistsError(clientRequestId);
@@ -33,6 +39,9 @@ export class AlertsService {
 
     try {
       const saved = await this.alertRepository.save(alert);
+      // Evaluate immediately so a just-created alert that is already satisfied
+      // does not wait only for the next cron cycle.
+      void this.alertEvaluator.evaluateAlert(saved);
       return this.toResponse(saved);
     } catch (error: unknown) {
       // Prisma P2002: unique constraint violation (race condition / duplicate)

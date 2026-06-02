@@ -18,14 +18,9 @@ describe('createApiClient', () => {
         }),
       },
       response: {
-        use: jest.fn(
-          (
-            _onFulfilled: unknown,
-            onRejected: unknown,
-          ) => {
-            mockResponseErrorInterceptor = onRejected as typeof mockResponseErrorInterceptor;
-          },
-        ),
+        use: jest.fn((_onFulfilled: unknown, onRejected: unknown) => {
+          mockResponseErrorInterceptor = onRejected as typeof mockResponseErrorInterceptor;
+        }),
       },
     },
   };
@@ -72,32 +67,24 @@ describe('createApiClient', () => {
 
   it('maps request-without-response to NetworkError', async () => {
     const error = { message: 'Network Error' };
-    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(
-      NetworkError,
-    );
+    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(NetworkError);
   });
 
   it('maps 5xx responses to ServerError', async () => {
     const error = { response: { status: 500 } };
-    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(
-      ServerError,
-    );
+    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(ServerError);
   });
 
   it('maps 502 responses to ServerError', async () => {
     const error = { response: { status: 502 } };
-    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(
-      ServerError,
-    );
+    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(ServerError);
   });
 
   // --- R4: 401 Handling ---
 
   it('clears token storage and calls onLoggedOut on 401', async () => {
     const error = { response: { status: 401 } };
-    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(
-      AuthError,
-    );
+    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(AuthError);
     expect(mockTokenStorage.clear).toHaveBeenCalledTimes(1);
     expect(onLoggedOut).toHaveBeenCalledTimes(1);
   });
@@ -109,7 +96,7 @@ describe('createApiClient', () => {
       set: jest.fn((key: string, value: string) => {
         mmkvState.set(key, value);
       }),
-      remove: jest.fn((key: string) => {
+      delete: jest.fn((key: string) => {
         mmkvState.delete(key);
       }),
     };
@@ -121,12 +108,10 @@ describe('createApiClient', () => {
     createApiClient('http://localhost:3000/api', tokenStorage, onLoggedOut);
 
     const error = { response: { status: 401 } };
-    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(
-      AuthError,
-    );
+    await expect(mockResponseErrorInterceptor(error)).rejects.toBeInstanceOf(AuthError);
 
     expect(mmkv.getString('auth_token')).toBeUndefined();
-    expect(mmkv.remove).toHaveBeenCalledWith('auth_token');
+    expect(mmkv.delete).toHaveBeenCalledWith('auth_token');
     expect(onLoggedOut).toHaveBeenCalledTimes(1);
   });
 
@@ -134,9 +119,7 @@ describe('createApiClient', () => {
 
   it('rejects with original error for 4xx (non-401) responses', async () => {
     const originalError = { response: { status: 400, data: { message: 'Bad request' } } };
-    await expect(mockResponseErrorInterceptor(originalError)).rejects.toBe(
-      originalError,
-    );
+    await expect(mockResponseErrorInterceptor(originalError)).rejects.toBe(originalError);
     expect(mockTokenStorage.clear).not.toHaveBeenCalled();
   });
 });

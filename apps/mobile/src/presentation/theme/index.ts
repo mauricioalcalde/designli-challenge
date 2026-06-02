@@ -8,5 +8,7 @@ export type {
   ColorTokens,
   TypographyTokens,
   SpacingTokens,
-  RadiiTokens,
+  RadiusTokens,
+  LegacyRadiiTokens,
+  ElevationTokens,
 } from './types';

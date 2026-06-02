@@ -1,5 +1,6 @@
-import { Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useConnectivity } from '../hooks/useConnectivity';
+import { useTheme } from '../theme/useTheme';
 
 /**
  * Non-dismissible "No internet connection" banner.
@@ -8,21 +9,34 @@ import { useConnectivity } from '../hooks/useConnectivity';
  */
 export function ConnectivityBanner() {
   const isConnected = useConnectivity();
+  const { tokens } = useTheme();
 
   if (isConnected) {
     return null;
   }
 
-  return <Text style={styles.banner}>No internet connection</Text>;
+  return (
+    <Text
+      style={[
+        styles.banner,
+        {
+          backgroundColor: tokens.colors.semantic.error,
+          color: tokens.colors.text.inverse,
+          fontFamily: tokens.typography.bodySmall.fontFamily,
+          fontSize: tokens.typography.bodySmall.fontSize,
+          lineHeight: tokens.typography.bodySmall.lineHeight,
+        },
+      ]}
+    >
+      No internet connection
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: '#FF4444',
-    color: '#FFFFFF',
     textAlign: 'center',
     paddingVertical: 8,
-    fontSize: 14,
     fontWeight: '600',
   },
 });

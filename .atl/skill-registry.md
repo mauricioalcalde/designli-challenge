@@ -1,139 +1,115 @@
-# Skill Registry — designli-challenge
+# Skill Registry
 
-> Generated: 2026-05-31 by sdd-init (re-init with real stack)
-> Mode: hybrid
+**Delegator use only.** Any agent that launches sub-agents reads this registry to resolve compact rules, then injects them directly into sub-agent prompts. Sub-agents do NOT read this registry or individual SKILL.md files.
+
+See `_shared/skill-resolver.md` for the full resolution protocol.
 
 ## User Skills
 
-### branch-pr
+| Trigger | Skill | Path |
+|---------|-------|------|
+| creating, opening, or preparing PRs for review. | branch-pr | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\branch-pr\SKILL.md` |
+| PRs over 400 lines, stacked PRs, review slices. | chained-pr | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\chained-pr\SKILL.md` |
+| writing guides, READMEs, RFCs, onboarding, architecture, or review-facing docs. | cognitive-doc-design | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\cognitive-doc-design\SKILL.md` |
+| PR feedback, issue replies, reviews, Slack messages, or GitHub comments. | comment-writer | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\comment-writer\SKILL.md` |
+| Go tests, go test coverage, Bubbletea teatest, golden files. | go-testing | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\go-testing\SKILL.md` |
+| creating GitHub issues, bug reports, or feature requests. | issue-creation | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\issue-creation\SKILL.md` |
+| judgment day, dual review, adversarial review, juzgar. | judgment-day | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\judgment-day\SKILL.md` |
+| new skills, agent instructions, documenting AI usage patterns. | skill-creator | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\skill-creator\SKILL.md` |
+| implementation, commit splitting, chained PRs, or keeping tests and docs with code. | work-unit-commits | `C:\Users\Mauricio_Alcalde\.config\opencode\skills\work-unit-commits\SKILL.md` |
 
-- **Trigger**: creating, opening, or preparing PRs for review.
-- **Path**: `~/.config/opencode/skills/branch-pr/SKILL.md`
-- **Compact Rules**:
-  - Every PR MUST link an approved issue with `status:approved` label
-  - Every PR MUST have exactly one `type:*` label
-  - Branch format: `type/description` (types: feat/fix/chore/docs/style/refactor/perf/test/build/ci/revert)
-  - Conventional commits: `type(scope): description` with types matching PR labels
-  - PR body MUST include: linked issue, PR type, summary, changes table, test plan, contributor checklist
-  - Run shellcheck on modified scripts before pushing
-  - Automated checks must pass before merge
-  - No blank PRs without issue linkage
+## Compact Rules
+
+Pre-digested rules per skill. Delegators copy matching blocks into sub-agent prompts as `## Project Standards (auto-resolved)`.
+
+### branch-pr
+- Every PR MUST link an approved issue, no exceptions.
+- Every PR MUST have exactly one `type:*` label.
+- Branches MUST use `type/description` with lowercase `a-z0-9._-` only.
+- Commits MUST follow conventional commit format.
+- PR body MUST include linked issue, PR type, summary, file changes, and test plan.
+- Run shellcheck on changed scripts before pushing.
+- Do not open blank PRs without issue linkage.
+- Merge only after automated checks pass.
 
 ### chained-pr
-
-- **Trigger**: PRs over 400 lines, stacked PRs, review slices.
-- **Path**: `~/.config/opencode/skills/chained-pr/SKILL.md`
-- **Compact Rules**:
-  - Split PRs over 400 changed lines unless maintainer accepts `size:exception`
-  - Keep each PR reviewable in ≤60 minutes
-  - One deliverable work unit per PR; tests/docs with the unit
-  - State start/end/dependencies/follow-up/out-of-scope in every chained PR
-  - Every child PR includes a dependency diagram marking current PR with 📍
-  - Feature Branch Chain: draft/no-merge tracker PR; children target parent branch
-  - No mixing chain strategies after user chooses one
-  - Polluted diffs: retarget or rebase until only current work unit appears
+- Split PRs above 400 changed lines unless maintainer grants `size:exception`.
+- Keep each PR reviewable in about 60 minutes or less.
+- Use one deliverable work unit per PR, keep tests and docs with it.
+- Each chained PR MUST state dependencies, follow-up work, and out-of-scope items.
+- Child PRs MUST include a dependency diagram and mark the current PR with `📍`.
+- In feature-branch chains, start with a draft tracker PR and target parent branches correctly.
+- Treat polluted diffs as base bugs, retarget or rebase until clean.
+- Do not mix chain strategies after one is chosen.
 
 ### cognitive-doc-design
-
-- **Trigger**: writing guides, READMEs, RFCs, onboarding, architecture, or review-facing docs.
-- **Path**: `~/.config/opencode/skills/cognitive-doc-design/SKILL.md`
-- **Compact Rules**:
-  - Lead with the answer: decision/action/outcome first, context after
-  - Progressive disclosure: happy path first, then details, edge cases, references
-  - Chunking: group related info into small sections
-  - Signposting: headings, labels, callouts, summaries
-  - Recognition over recall: tables, checklists, examples, templates
-  - Review empathy: docs so reviewers verify intent without reconstructing full story
-  - Default doc structure: outcome title → quick path → details table → checklist → next step
+- Lead with the answer, decision, action, or outcome first.
+- Use progressive disclosure: happy path first, details second.
+- Chunk related content into small sections.
+- Add signposts with headings, labels, summaries, and callouts.
+- Prefer tables, checklists, and templates over recall-heavy prose.
+- Write review-facing docs so intent is easy to verify.
+- Default flow: outcome title, quick path, details table, checklist, next step.
 
 ### comment-writer
-
-- **Trigger**: PR feedback, issue replies, reviews, Slack messages, or GitHub comments.
-- **Path**: `~/.config/opencode/skills/comment-writer/SKILL.md`
-- **Compact Rules**:
-  - Be useful fast: start with actionable point, not recap
-  - Be warm and direct: thoughtful teammate, not corporate bot
-  - Keep it short: 1-3 paragraphs or tight bullet list
-  - Explain why: give technical reason when asking for a change
-  - Avoid pile-ons: comment on highest-value issue, not every preference
-  - Match thread language (Rioplatense Spanish voseo when applicable)
-  - No em dashes; use commas, periods, or parentheses instead
+- Start with the actionable point, not a long recap.
+- Keep tone warm, direct, and human.
+- Keep comments short, usually 1-3 short paragraphs or tight bullets.
+- Explain the technical why when requesting change.
+- Focus on the highest-value issue, avoid pile-ons.
+- Match the thread language, use Rioplatense voseo in Spanish.
+- Do not use em dashes.
 
 ### go-testing
-
-- **Trigger**: Go tests, go test coverage, Bubbletea teatest, golden files.
-- **Path**: `~/.config/opencode/skills/go-testing/SKILL.md`
-- **Compact Rules**:
-  - Prefer table-driven tests for multiple cases; use `t.Run(tt.name, ...)`
-  - Test behavior and state transitions, not implementation trivia
-  - Use `t.TempDir()` for filesystem tests; never real home directory
-  - Integration tests skippable with `testing.Short()` when they run external commands
-  - Golden files must be deterministic; update only through repo's `-update` path
-  - Use small mocks/interfaces around system or command execution boundaries
+- Prefer table-driven tests for multiple scenarios.
+- Test behavior and state transitions, not implementation trivia.
+- Use `t.TempDir()` for filesystem tests.
+- Skip slow or external integration tests in `testing.Short()`.
+- For Bubbletea, test `Model.Update()` directly before using `teatest`.
+- Golden files MUST be deterministic and updated only through the repo update path.
+- Use small mocks around command and system boundaries.
 
 ### issue-creation
-
-- **Trigger**: creating GitHub issues, bug reports, or feature requests.
-- **Path**: `~/.config/opencode/skills/issue-creation/SKILL.md`
-- **Compact Rules**:
-  - Blank issues disabled — MUST use template (bug report or feature request)
-  - Every issue gets `status:needs-review` automatically on creation
-  - Maintainer MUST add `status:approved` before any PR can be opened
-  - Questions go to Discussions, not issues
-  - Bug Report: pre-flight checks, description, steps, expected vs actual, OS, agent, shell
-  - Feature Request: pre-flight checks, problem, proposed solution, affected area
-  - Labels: bug, enhancement, status:needs-review, status:approved, priority:high/medium/low
+- Blank issues are disabled, always use the proper template.
+- New issues get `status:needs-review`; PRs wait for `status:approved`.
+- Questions belong in Discussions, not Issues.
+- Search for duplicates before creating a new issue.
+- Bug reports MUST include reproduction, expected vs actual, environment, and logs when available.
+- Feature requests MUST describe the problem, proposed solution, and affected area.
+- Respect the repo label system for status and priority.
 
 ### judgment-day
-
-- **Trigger**: judgment day, dual review, adversarial review, juzgar.
-- **Path**: `~/.config/opencode/skills/judgment-day/SKILL.md`
-- **Compact Rules**:
-  - Dual blind review: launch two judges in parallel; never review code yourself
-  - Wait for both judges before synthesis; never accept partial verdict
-  - Classify warnings: WARNING (real) only if normal intended use triggers them; otherwise INFO
-  - Ask before fixing Round 1 confirmed issues
-  - After fix agent runs, re-launch both judges before commit/push/done
-  - Terminal states: JUDGMENT: APPROVED or JUDGMENT: ESCALATED
-  - After 2 fix iterations with remaining issues, ask user whether to continue
+- Resolve project standards from registry before launching judges.
+- Run two blind judges in parallel, never self-review.
+- Wait for both judges before synthesis.
+- Mark warnings as real only when normal intended use can trigger them.
+- Ask before applying Round 1 fixes.
+- Re-judge in parallel after any fix round.
+- End only with `JUDGMENT: APPROVED` or `JUDGMENT: ESCALATED`.
+- After two fix rounds with remaining issues, ask the user whether to continue.
 
 ### skill-creator
-
-- **Trigger**: new skills, agent instructions, documenting AI usage patterns.
-- **Path**: `~/.config/opencode/skills/skill-creator/SKILL.md`
-- **Compact Rules**:
-  - Skill is LLM runtime instruction contract, not human documentation
-  - References MUST point to local files
-  - Target 180-450 tokens body; hard max 1000
-  - Required sections: Activation Contract, Hard Rules, Decision Gates, Execution Steps, Output Contract, References
-  - Description: one physical line, YAML-safe, ≤250 chars, trigger-first
-  - No Keywords section; preserve essential triggers in description
-  - Supporting material in assets/ or references/, not main skill body
+- Treat skills as LLM runtime contracts, not human docs.
+- Follow repo skill style guide first when it exists.
+- Keep the main skill concise, move detail to local references or assets.
+- Frontmatter MUST include `name`, `description`, `license`, and metadata.
+- `description` MUST be one line, YAML-safe, trigger-first, and at most 250 chars.
+- Required sections: Activation Contract, Hard Rules, Decision Gates, Execution Steps, Output Contract, References.
+- Do not add a Keywords section.
 
 ### work-unit-commits
-
-- **Trigger**: implementation, commit splitting, chained PRs, keeping tests and docs with code.
-- **Path**: `~/.config/opencode/skills/work-unit-commits/SKILL.md`
-- **Compact Rules**:
-  - Commit by work unit: one deliverable behavior, fix, migration, or docs unit per commit
-  - Do not commit by file type (models then services then tests)
-  - Keep tests with code they verify; keep docs with user-visible change
-  - Tell a story: reviewer understands why each commit exists from diff and message
-  - SDD workload guard: if >400-line forecast, group commits into chained PRs before implementation
-  - Pre-commit checklist: one clear purpose, repo makes sense after commit, rollback reasonable, message explains outcome
+- Commit by deliverable work unit, not by file type.
+- Keep tests with the code they verify.
+- Keep docs with the user-visible behavior they explain.
+- Each commit should tell a reviewer why it exists.
+- Each commit should be rollback-friendly on its own.
+- If work may exceed 400 lines, plan chained PR slices before implementation.
+- Check purpose, repo coherence, verification, rollback, and commit message before committing.
 
 ## Project Conventions
 
-- **AGENTS.md** (user-level): `~/.config/opencode/AGENTS.md`
-  - Conventional commits only; no Co-Authored-By or AI attribution
-  - Senior Architect persona: SOLID, Clean Architecture, testing, atomic design
-  - Spanish: Rioplatense voseo; short responses; verify before agreeing
-  - Contextual Skill Loading: check `<available_skills>` before each response
-  - Engram Persistent Memory protocol
+| File | Path | Notes |
+|------|------|-------|
+| — | — | No project-level convention files detected (`AGENTS.md`, `agents.md`, `CLAUDE.md`, `.cursorrules`, `GEMINI.md`, `copilot-instructions.md`). |
 
-## Notes
-
-- No project-level skills detected (no .claude/skills/, .gemini/skills/, .agent/skills/, or skills/ directories)
-- No project-level convention files detected (no AGENTS.md, CLAUDE.md, .cursorrules, GEMINI.md, or copilot-instructions.md)
-- User-level skills fully resolved and registered above
-- Project conventions sourced from `~/.config/opencode/AGENTS.md`
+Read the convention files listed above for project-specific patterns and rules. All referenced paths have been extracted, no need to read index files to discover more.

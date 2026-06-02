@@ -5,7 +5,7 @@ const AUTH_TOKEN_KEY = 'auth_token';
 interface MmkvStorageLike {
   getString(key: string): string | undefined;
   set(key: string, value: string): void;
-  remove(key: string): void;
+  delete(key: string): void;
 }
 
 export class MmkvTokenStorage extends TokenStorage {
@@ -22,6 +22,6 @@ export class MmkvTokenStorage extends TokenStorage {
   }
 
   clear(): void {
-    this.storage.remove(AUTH_TOKEN_KEY);
+    this.storage.delete(AUTH_TOKEN_KEY);
   }
 }

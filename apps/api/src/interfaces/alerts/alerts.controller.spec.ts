@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AlertsController } from './alerts.controller';
 import { AlertsService } from '../../application/alerts/alerts.service';
+import { AlertEvaluatorService } from '../../application/alerts/alert-evaluator.service';
 import { IAlertRepository } from '../../application/alerts/ports/alert-repository.port';
 import { ITokenService } from '../../application/auth/ports/token-service.port';
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
@@ -24,6 +25,7 @@ describe('AlertsController (integration)', () => {
   let alertsService: AlertsService;
   let tokenSvc: ITokenService;
   let alertRepo: IAlertRepository;
+  let alertEvaluator: AlertEvaluatorService;
 
   beforeEach(async () => {
     alertRepo = {
@@ -36,12 +38,17 @@ describe('AlertsController (integration)', () => {
       updateLastTriggered: vi.fn(),
     } as unknown as IAlertRepository;
 
+    alertEvaluator = {
+      evaluateAlert: vi.fn(),
+      evaluateAll: vi.fn(),
+    } as unknown as AlertEvaluatorService;
+
     tokenSvc = {
       sign: vi.fn(),
       verify: vi.fn(),
     } as unknown as ITokenService;
 
-    alertsService = new AlertsService(alertRepo);
+    alertsService = new AlertsService(alertRepo, alertEvaluator);
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AlertsController],

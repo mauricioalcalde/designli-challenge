@@ -16,15 +16,11 @@ export function Card({ title, subtitle, children, onPress, testID }: CardProps) 
 
   const cardStyle: ViewStyle = {
     padding: tokens.spacing.md,
-    borderRadius: tokens.radii.lg,
-    backgroundColor: tokens.colors.surface,
-    // Shadow (iOS)
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    // Shadow (Android)
-    elevation: 2,
+    borderRadius: tokens.radius.card,
+    backgroundColor: tokens.colors.bg.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.border.subtle,
+    ...tokens.elevation.low,
   };
 
   const content = (
@@ -34,9 +30,11 @@ export function Card({ title, subtitle, children, onPress, testID }: CardProps) 
           style={[
             styles.title,
             {
-              color: tokens.colors.text,
-              fontSize: tokens.typography.h4.fontSize,
-              fontWeight: tokens.typography.h4.fontWeight,
+              color: tokens.colors.text.primary,
+              fontSize: tokens.typography.title.fontSize,
+              fontWeight: tokens.typography.title.fontWeight,
+              lineHeight: tokens.typography.title.lineHeight,
+              fontFamily: tokens.typography.title.fontFamily,
             },
           ]}
         >
@@ -48,8 +46,10 @@ export function Card({ title, subtitle, children, onPress, testID }: CardProps) 
           style={[
             styles.subtitle,
             {
-              color: tokens.colors.textSecondary,
+              color: tokens.colors.text.secondary,
               fontSize: tokens.typography.body.fontSize,
+              lineHeight: tokens.typography.body.lineHeight,
+              fontFamily: tokens.typography.body.fontFamily,
               marginTop: title ? 4 : 0,
             },
           ]}

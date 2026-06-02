@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AlertsService } from './alerts.service';
 import { IAlertRepository } from './ports/alert-repository.port';
+import { AlertEvaluatorService } from './alert-evaluator.service';
 import { Alert } from '../../domain/alerts/alert.entity';
 import { AlertAlreadyExistsError, AlertNotFoundError } from '../../domain/alerts/alert-errors';
 
@@ -20,6 +21,7 @@ function makeAlert(overrides?: Partial<Alert>): Alert {
 
 describe('AlertsService', () => {
   let alertRepo: IAlertRepository;
+  let alertEvaluator: AlertEvaluatorService;
   let service: AlertsService;
 
   beforeEach(() => {
@@ -33,7 +35,12 @@ describe('AlertsService', () => {
       updateLastTriggered: vi.fn(),
     } as unknown as IAlertRepository;
 
-    service = new AlertsService(alertRepo);
+    alertEvaluator = {
+      evaluateAlert: vi.fn(),
+      evaluateAll: vi.fn(),
+    } as unknown as AlertEvaluatorService;
+
+    service = new AlertsService(alertRepo, alertEvaluator);
   });
 
   describe('create (idempotency)', () => {

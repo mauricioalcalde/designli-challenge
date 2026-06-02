@@ -1,0 +1,30 @@
+FROM node:22-bookworm-slim
+
+WORKDIR /workspace
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY apps/api/tsconfig.json apps/api/tsconfig.json
+COPY packages/shared/tsconfig.json packages/shared/tsconfig.json
+
+RUN pnpm install --frozen-lockfile
+
+COPY apps/api/src ./apps/api/src
+COPY apps/api/prisma ./apps/api/prisma
+COPY packages/shared/src ./packages/shared/src
+
+RUN pnpm prisma:generate && pnpm build:api
+
+EXPOSE 3000
+
+CMD ["sh", "-c", "pnpm prisma:migrate:deploy && pnpm --filter @designli-challenge/api start:prod"]

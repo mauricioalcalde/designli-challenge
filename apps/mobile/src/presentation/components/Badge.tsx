@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/useTheme';
 import type { ColorTokens } from '../theme/types';
 
-type BadgeVariant = 'success' | 'error' | 'warning' | 'info';
+type BadgeVariant = 'success' | 'error' | 'warning' | 'info' | 'neutral';
 
 interface BadgeProps {
   text: string;
@@ -21,6 +21,8 @@ function variantColor(variant: BadgeVariant, colors: ColorTokens): string {
       return colors.warning;
     case 'info':
       return colors.info;
+    case 'neutral':
+      return colors.textSecondary;
   }
 }
 
@@ -34,7 +36,9 @@ export function Badge({ text, variant = 'info', testID }: BadgeProps) {
         styles.container,
         {
           backgroundColor: `${color}20`,
-          borderRadius: tokens.radii.full,
+          borderRadius: tokens.radius.chip,
+          borderWidth: 1,
+          borderColor: `${color}30`,
         },
       ]}
       testID={testID}
@@ -45,7 +49,9 @@ export function Badge({ text, variant = 'info', testID }: BadgeProps) {
           {
             color,
             fontSize: tokens.typography.caption.fontSize,
-            fontWeight: '600',
+            lineHeight: tokens.typography.caption.lineHeight,
+            fontWeight: tokens.typography.caption.fontWeight,
+            fontFamily: tokens.typography.caption.fontFamily,
           },
         ]}
       >

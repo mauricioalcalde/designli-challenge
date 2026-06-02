@@ -3,6 +3,7 @@ import { AlertEvaluatorService } from './alert-evaluator.service';
 import { IAlertRepository } from './ports/alert-repository.port';
 import { IStockProvider } from '../stocks/ports/stock-provider.port';
 import { INotificationSender } from '../notifications/ports/notification-sender.port';
+import { IDeviceTokenRepository } from '../notifications/ports/device-token-repository.port';
 import { Alert } from '../../domain/alerts/alert.entity';
 import { StockListing, AlertNotificationPayload } from '@designli-challenge/shared';
 
@@ -29,6 +30,7 @@ describe('AlertEvaluatorService', () => {
   let alertRepo: IAlertRepository;
   let stockProvider: IStockProvider;
   let notificationSender: INotificationSender;
+  let deviceTokenRepository: IDeviceTokenRepository;
   let evaluator: AlertEvaluatorService;
 
   beforeEach(() => {
@@ -51,7 +53,17 @@ describe('AlertEvaluatorService', () => {
       send: vi.fn(),
     } as unknown as INotificationSender;
 
-    evaluator = new AlertEvaluatorService(alertRepo, stockProvider, notificationSender);
+    deviceTokenRepository = {
+      upsert: vi.fn(),
+      findByUser: vi.fn(),
+    } as unknown as IDeviceTokenRepository;
+
+    evaluator = new AlertEvaluatorService(
+      alertRepo,
+      stockProvider,
+      notificationSender,
+      deviceTokenRepository,
+    );
   });
 
   describe('threshold crossing', () => {
@@ -60,16 +72,21 @@ describe('AlertEvaluatorService', () => {
       vi.mocked(alertRepo.findAllActive).mockResolvedValue([
         makeAlert({ symbol: 'AAPL', direction: 'above', threshold: 180 }),
       ]);
-      vi.mocked(notificationSender.send).mockResolvedValue({ success: true });
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: true, status: 'sent' });
 
       await evaluator.evaluateAll();
 
       expect(notificationSender.send).toHaveBeenCalledTimes(1);
       expect(alertRepo.updateLastTriggered).toHaveBeenCalledTimes(1);
+      expect(deviceTokenRepository.findByUser).toHaveBeenCalledWith(1);
 
-      const payload = vi.mocked(notificationSender.send).mock.calls[0][1] as AlertNotificationPayload;
+      const payload = vi.mocked(notificationSender.send).mock
+        .calls[0][1] as AlertNotificationPayload;
+      const tokens = vi.mocked(notificationSender.send).mock.calls[0][2] as string[];
       expect(payload.symbol).toBe('AAPL');
       expect(payload.currentPrice).toBe(185);
+      expect(tokens).toEqual(['token-a']);
     });
 
     it('should NOT send notification when price does NOT cross threshold', async () => {
@@ -114,7 +131,8 @@ describe('AlertEvaluatorService', () => {
 
       vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
       vi.mocked(alertRepo.findAllActive).mockResolvedValue([oldTrigger]);
-      vi.mocked(notificationSender.send).mockResolvedValue({ success: true });
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: true, status: 'sent' });
 
       await evaluator.evaluateAll();
 
@@ -149,11 +167,66 @@ describe('AlertEvaluatorService', () => {
       vi.mocked(alertRepo.findAllActive).mockResolvedValue([
         makeAlert({ symbol: 'GOOGL', direction: 'below', threshold: 135 }),
       ]);
-      vi.mocked(notificationSender.send).mockResolvedValue({ success: true });
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-b']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: true, status: 'sent' });
 
       await evaluator.evaluateAll();
 
       expect(notificationSender.send).toHaveBeenCalledTimes(1);
+    });
+
+    it('should skip delivery and last-trigger update when no persisted tokens exist', async () => {
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([
+        makeAlert({ symbol: 'AAPL', direction: 'above', threshold: 180 }),
+      ]);
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue([]);
+
+      await evaluator.evaluateAll();
+
+      expect(deviceTokenRepository.findByUser).toHaveBeenCalledWith(1);
+      expect(notificationSender.send).not.toHaveBeenCalled();
+      expect(alertRepo.updateLastTriggered).not.toHaveBeenCalled();
+    });
+
+    it('should not update last-triggered when sender reports skipped delivery', async () => {
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([
+        makeAlert({ symbol: 'AAPL', direction: 'above', threshold: 180 }),
+      ]);
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: false, status: 'skipped' });
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ alertId: 1, symbol: 'AAPL' }),
+        ['token-a'],
+      );
+      expect(alertRepo.updateLastTriggered).not.toHaveBeenCalled();
+    });
+
+    it('should not update last-triggered when sender reports failed delivery', async () => {
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([
+        makeAlert({ symbol: 'AAPL', direction: 'above', threshold: 180 }),
+      ]);
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({
+        success: false,
+        status: 'failed',
+        error: 'FCM send failed',
+      });
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ alertId: 1, symbol: 'AAPL' }),
+        ['token-a'],
+      );
+      expect(alertRepo.updateLastTriggered).not.toHaveBeenCalled();
     });
   });
 });

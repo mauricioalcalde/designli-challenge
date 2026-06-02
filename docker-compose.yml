@@ -1,0 +1,13 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      JWT_SECRET: change-me-in-production
+      NOTIFICATION_SENDER: firebase
+      STOCK_PROVIDER: finnhub
+      FINNHUB_API_KEY: d8f2931r01qub7kfi7c0d8f2931r01qub7kfi7cg
+      GOOGLE_APPLICATION_CREDENTIALS: /app/apps/api/designli-e2a1e-firebase-adminsdk-fbsvc-5edb376f08.json
+    ports:
+      - '3001:3000'

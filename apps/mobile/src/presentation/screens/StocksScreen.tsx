@@ -39,6 +39,7 @@ export function StocksScreen() {
   const isStale = useStocksStore((state) => state.isStale);
   const lastUpdatedAt = useStocksStore((state) => state.lastUpdatedAt);
   const error = useStocksStore((state) => state.error);
+  const staleMessage = useStocksStore((state) => state.staleMessage);
   const load = useStocksStore((state) => state.load);
   const refresh = useStocksStore((state) => state.refresh);
   const { tokens } = useTheme();
@@ -60,9 +61,10 @@ export function StocksScreen() {
 
       void sync();
 
+      // Poll every 10s for near real-time updates (single source of truth: quotes)
       const interval = setInterval(() => {
         void sync();
-      }, 30000);
+      }, 10000);
 
       return () => {
         active = false;
@@ -207,7 +209,7 @@ export function StocksScreen() {
               testID="stocks-stale-banner"
             >
               <Text style={[styles.bannerTitle, { color: tokens.colors.warning }]}>
-                You’re offline. Showing cached data.
+                {staleMessage ?? "You're offline. Showing cached data."}
               </Text>
               <Text style={[styles.bannerMeta, { color: tokens.colors.text.muted }]}>
                 Last sync {formatSnapshotTimestamp(lastUpdatedAt)}

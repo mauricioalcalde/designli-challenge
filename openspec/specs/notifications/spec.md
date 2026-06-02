@@ -49,3 +49,20 @@ The system **MUST** include ≥2 passing tests covering the notification port co
 - GIVEN the API workspace is set up
 - WHEN `pnpm -F api test` runs
 - THEN ≥2 tests pass covering the port interface and console sender
+
+### Requirement: Settings-Hosted Notification Controls
+
+The mobile presentation **MUST** host notification controls inside the Profile/Settings flow, preserve existing device-token behavior, and expose premium retry/error states for sync failures.
+
+#### Scenario: Retryable notification sync failure
+
+- **GIVEN** device token registration fails
+- **WHEN** the notifications settings screen renders the error state
+- **THEN** it shows `Sync failed. Tap to retry.`
+- **AND** a retry action is available
+
+#### Scenario: Notification controls live under profile
+
+- **GIVEN** the authenticated app shell is visible
+- **WHEN** the user opens profile/settings
+- **THEN** notification controls are reachable from that flow instead of a top-level tab

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated } from 'react-native';
+import { Animated, type DimensionValue } from 'react-native';
 import { useTheme } from '../theme/useTheme';
 
 // ---------------------------------------------------------------------------
@@ -7,7 +7,7 @@ import { useTheme } from '../theme/useTheme';
 // ---------------------------------------------------------------------------
 
 interface SkeletonBaseProps {
-  width: number;
+  width: DimensionValue;
   height: number;
   borderRadius?: number;
   testID?: string;
@@ -59,22 +59,22 @@ function SkeletonBase({ width, height, borderRadius = 4, testID }: SkeletonBaseP
 // ---------------------------------------------------------------------------
 
 interface SkeletonLineProps {
-  width: number;
+  width?: DimensionValue;
   height?: number;
   testID?: string;
 }
 
-function SkeletonLine({ width, height = 16, testID }: SkeletonLineProps) {
+function SkeletonLine({ width = '70%', height = 16, testID }: SkeletonLineProps) {
   return <SkeletonBase width={width} height={height} borderRadius={4} testID={testID} />;
 }
 
 interface SkeletonCardProps {
-  width: number;
+  width?: DimensionValue;
   height?: number;
   testID?: string;
 }
 
-function SkeletonCard({ width, height = 80, testID }: SkeletonCardProps) {
+function SkeletonCard({ width = '90%', height = 80, testID }: SkeletonCardProps) {
   return <SkeletonBase width={width} height={height} borderRadius={12} testID={testID} />;
 }
 

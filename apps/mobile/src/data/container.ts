@@ -1,4 +1,4 @@
-import { createMMKV } from 'react-native-mmkv';
+import { createStorage } from './mmkv';
 import { MmkvTokenStorage } from './token-storage.mmkv';
 import { MmkvStockSnapshotStorage } from './stock-snapshot.mmkv';
 import { createApiClient } from './api-client';
@@ -24,7 +24,7 @@ import { API_BASE_URL } from './env';
  *   6. Close the loop: wire 401 logout callback to store.logout()
  */
 
-const mmkv = createMMKV();
+const mmkv = createStorage();
 const tokenStorage = new MmkvTokenStorage(mmkv);
 const stockSnapshotStorage = new MmkvStockSnapshotStorage(mmkv);
 

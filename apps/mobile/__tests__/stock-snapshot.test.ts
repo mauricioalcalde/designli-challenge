@@ -42,13 +42,27 @@ describe('MmkvStockSnapshotStorage', () => {
   it('reads snapshots from MMKV', () => {
     mockGetString.mockReturnValue(
       JSON.stringify({
-        items: [],
+        items: [
+          {
+            symbol: 'AAPL',
+            name: 'Apple Inc.',
+            currentPrice: 212.45,
+            changePercent: 1.23,
+          },
+        ],
         savedAt: '2026-05-29T16:40:00.000Z',
       }),
     );
 
     expect(storage.get()).toEqual({
-      items: [],
+      items: [
+        {
+          symbol: 'AAPL',
+          name: 'Apple Inc.',
+          currentPrice: 212.45,
+          changePercent: 1.23,
+        },
+      ],
       savedAt: '2026-05-29T16:40:00.000Z',
     });
     expect(mockGetString).toHaveBeenCalledWith('stocks_snapshot');

@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import {
   NotificationsPermissionError,
   NotificationsTokenError,
@@ -53,9 +53,15 @@ export class ExpoPushRuntime extends PushRuntimePort {
     }
   }
 
+  async openSystemSettings(): Promise<void> {
+    await Linking.openSettings();
+  }
+
   private assertSupportedForPermissions(): void {
     if (!SUPPORTED_PLATFORMS.includes(Platform.OS as NativePushPlatform)) {
-      throw new NotificationsPermissionError('Push notifications require a native iOS or Android runtime');
+      throw new NotificationsPermissionError(
+        'Push notifications require a native iOS or Android runtime',
+      );
     }
   }
 
@@ -72,17 +78,18 @@ export class ExpoPushRuntime extends PushRuntimePort {
       return error.message;
     }
 
-    const message = error instanceof Error && error.message
-      ? error.message
-      : 'Unable to get a device token right now';
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Unable to get a device token right now';
     const normalized = message.toLowerCase();
 
     if (
-      normalized.includes('expo go')
-      || normalized.includes('development build')
-      || normalized.includes('physical device')
-      || normalized.includes('simulator')
-      || normalized.includes('emulator')
+      normalized.includes('expo go') ||
+      normalized.includes('development build') ||
+      normalized.includes('physical device') ||
+      normalized.includes('simulator') ||
+      normalized.includes('emulator')
     ) {
       return 'Push notifications require a development build on a physical device';
     }

@@ -14,4 +14,5 @@ export abstract class PushRuntimePort {
   abstract getPermissionStatus(): Promise<'unknown' | 'denied' | 'granted'>;
   abstract requestPermission(): Promise<'denied' | 'granted'>;
   abstract getDeviceToken(): Promise<NativeDeviceToken>;
+  abstract openSystemSettings(): Promise<void>;
 }

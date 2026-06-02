@@ -81,3 +81,21 @@ The system **MUST** include ≥5 passing tests covering alert creation (idempote
 - GIVEN the API workspace is set up
 - WHEN `pnpm -F api test` runs
 - THEN ≥5 tests pass covering alert CRUD, evaluator, and cooldown logic
+
+### Requirement: Split Alerts Flow
+
+The mobile presentation **MUST** separate alert creation from alert listing, preserve existing alert behavior, and represent `Active`, `Triggered`, `Pending sync`, offline-save, retry, and failure states with shared premium primitives.
+
+#### Scenario: Offline alert creation
+
+- **GIVEN** the device is offline
+- **WHEN** the user creates a valid alert
+- **THEN** the UI confirms the alert was saved locally for later sync
+- **AND** the alert is marked `Pending sync`
+
+#### Scenario: Alerts list and create are separate surfaces
+
+- **GIVEN** the user is inside the Alerts flow
+- **WHEN** they browse existing alerts or start a new one
+- **THEN** listing and creation are presented on separate screens
+- **AND** both screens preserve existing alert contracts

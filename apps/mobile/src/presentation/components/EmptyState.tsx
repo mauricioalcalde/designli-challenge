@@ -24,9 +24,11 @@ export function EmptyState({ title, message, action, testID }: EmptyStateProps) 
         style={[
           styles.title,
           {
-            color: tokens.colors.text,
+            color: tokens.colors.text.primary,
             fontSize: tokens.typography.h3.fontSize,
             fontWeight: tokens.typography.h3.fontWeight,
+            lineHeight: tokens.typography.h3.lineHeight,
+            fontFamily: tokens.typography.h3.fontFamily,
           },
         ]}
       >
@@ -36,8 +38,10 @@ export function EmptyState({ title, message, action, testID }: EmptyStateProps) 
         style={[
           styles.message,
           {
-            color: tokens.colors.textSecondary,
+            color: tokens.colors.text.secondary,
             fontSize: tokens.typography.body.fontSize,
+            lineHeight: tokens.typography.body.lineHeight,
+            fontFamily: tokens.typography.body.fontFamily,
           },
         ]}
       >

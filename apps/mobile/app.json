@@ -3,16 +3,39 @@
     "name": "Designli Challenge",
     "slug": "designli-challenge",
     "version": "1.0.0",
+    "icon": "./iconDesignli.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./splashDesignli.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#111531"
+    },
     "ios": {
       "supportsTablet": true,
+      "icon": "./iconDesignli.png",
       "bundleIdentifier": "com.designli.challenge"
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./iconDesignli.png",
+        "backgroundColor": "#111531"
+      },
+      "googleServicesFile": "./google-services.json",
       "package": "com.designli.challenge"
     },
-    "plugins": ["expo-dev-client", "expo-notifications"]
+    "plugins": [
+      "expo-dev-client",
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ]
+    ]
   }
 }
