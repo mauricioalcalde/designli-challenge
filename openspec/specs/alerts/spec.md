@@ -62,17 +62,37 @@ A scheduled job **MUST** periodically evaluate all active alerts. For each alert
 - WHEN the evaluator runs
 - THEN the notification port is NOT called
 
-### Requirement: Duplicate-Trigger Prevention
+### Requirement: Direction-State Tracking
 
-The evaluator **MUST** enforce a cooldown window (default 5 minutes) per alert. If a trigger was already dispatched within the window, the evaluator **SHOULD** skip dispatching again.
+The evaluator **MUST** track `lastNotifiedDirection` (`'above' | 'below' | null`) per alert. On evaluation, an alert **SHALL** fire only when `lastNotifiedDirection` differs from the alert's configured direction AND the current price crosses the threshold in that direction. After firing, `lastNotifiedDirection` **MUST** be set to the alert's direction. When price crosses back across the threshold in the opposite direction, `lastNotifiedDirection` **MUST** reset to `null`. A first-ever evaluation (`lastNotifiedDirection` is `null`) **MUST** fire if the threshold condition is met.
 
-- GIVEN an alert was triggered 2 minutes ago
+- GIVEN an alert with null `lastNotifiedDirection`
+- WHEN price crosses the threshold in the alert's direction
+- THEN the evaluator fires AND sets `lastNotifiedDirection` to the alert's direction
+
+- GIVEN `lastNotifiedDirection` matches the alert's configured direction
 - WHEN the evaluator runs and the price still crosses the threshold
-- THEN no additional trigger is dispatched
+- THEN no additional trigger is dispatched (state-transition prevention)
 
-- GIVEN an alert was triggered 6 minutes ago
+- GIVEN `lastNotifiedDirection` is "above"
+- WHEN the price drops below the threshold
+- THEN `lastNotifiedDirection` resets to `null`
+
+- GIVEN `lastNotifiedDirection` reset to `null` after a reverse crossing
+- WHEN price crosses the threshold again in the alert's direction
+- THEN the evaluator fires again
+
+### Requirement: Duplicate-Trigger Prevention (Updated)
+
+The evaluator **MUST** use state-transition tracking as the primary dedup mechanism. An alert **SHALL** fire only when `lastNotifiedDirection` differs from the alert's configured direction AND price crosses the threshold. A cooldown window (default 5 minutes) **SHALL** remain as a secondary noise-guard to prevent rapid re-fires during threshold oscillation.
+
+- GIVEN `lastNotifiedDirection` matches the alert direction
 - WHEN the evaluator runs and the price still crosses the threshold
-- THEN a new trigger is dispatched
+- THEN no additional trigger is dispatched (state-transition prevents re-fire)
+
+- GIVEN `lastNotifiedDirection` was reset to null AND the cooldown is still active
+- WHEN the evaluator runs and the price crosses the threshold again
+- THEN no additional trigger is dispatched (cooldown secondary guard)
 
 ### Requirement: Alerts Test Suite
 

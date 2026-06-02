@@ -1,4 +1,5 @@
 export { MarketTopBar } from './MarketTopBar';
+export { MarketStatusPill } from './MarketStatusPill';
 export { MarketSummaryCard } from './MarketSummaryCard';
 export { MarketSearchBar } from './MarketSearchBar';
 export { WatchlistHeader } from './WatchlistHeader';

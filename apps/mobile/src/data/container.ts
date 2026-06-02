@@ -10,6 +10,7 @@ import { createAlertsStore } from '../application/alerts.store';
 import { createAuthStore } from '../application/auth.store';
 import { createNotificationsStore } from '../application/notifications.store';
 import { createStocksStore } from '../application/stocks.store';
+import { useInboxStore } from '../application/inbox.store';
 import { ExpoPushRuntime } from './expo-push.runtime';
 import { API_BASE_URL } from './env';
 
@@ -48,4 +49,11 @@ const useStocksStore = createStocksStore(stocksRepo, stockSnapshotStorage);
 // Close the loop: 401-triggered logout now calls the real store action
 doLogout = () => useAuthStore.getState().logout();
 
-export { useAuthStore, useAlertsStore, useNotificationsStore, useStocksStore, tokenStorage };
+export {
+  useAuthStore,
+  useAlertsStore,
+  useNotificationsStore,
+  useStocksStore,
+  useInboxStore,
+  tokenStorage,
+};

@@ -10,11 +10,14 @@ import { Button, Input, ScreenContainer, SegmentedControl } from '../components'
 import { AlertPreviewCard, StockSelector } from '../components/alerts';
 import type { AlertsStackParamList } from '../navigation/AlertsStack';
 import { useTheme } from '../theme/useTheme';
-import { formatAlertSummary } from './alerts.shared';
 
 export function CreateAlertScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AlertsStackParamList>>();
-  const route = useRoute<{ key: string; name: string; params?: AlertsStackParamList['CreateAlert'] }>();
+  const route = useRoute<{
+    key: string;
+    name: string;
+    params?: AlertsStackParamList['CreateAlert'];
+  }>();
   const { tokens } = useTheme();
   const isConnected = useConnectivity();
   const stocks = useStocksStore((state) => state.items);
@@ -44,7 +47,8 @@ export function CreateAlertScreen() {
   );
   const currentPrice = selectedStock?.currentPrice ?? routePrice ?? null;
   const numericTargetPrice = Number(targetPrice);
-  const hasValidTargetPrice = targetPrice.trim() && !Number.isNaN(numericTargetPrice) && numericTargetPrice > 0;
+  const hasValidTargetPrice =
+    targetPrice.trim() && !Number.isNaN(numericTargetPrice) && numericTargetPrice > 0;
   const isFormValid = Boolean(selectedStock && hasValidTargetPrice && direction);
   const explanation = !selectedStock
     ? 'Select a stock to preview your alert.'
@@ -115,16 +119,26 @@ export function CreateAlertScreen() {
     <ScreenContainer testID="create-alert-screen">
       <View style={styles.content}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} testID="create-alert-back-button">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            testID="create-alert-back-button"
+          >
             <Ionicons name="arrow-back" size={24} color={tokens.colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.topBarTitle, { color: tokens.colors.text.primary }]}>Create Alert</Text>
+          <Text style={[styles.topBarTitle, { color: tokens.colors.text.primary }]}>
+            Create Alert
+          </Text>
           <View style={styles.spacer} />
         </View>
 
         <View style={styles.headerBlock}>
-          <Text style={[styles.headerTitle, { color: tokens.colors.text.primary }]}>Create price alert</Text>
-          <Text style={[styles.headerSubtitle, { color: tokens.colors.text.secondary }]}>Choose a stock and set the price level that should trigger a notification.</Text>
+          <Text style={[styles.headerTitle, { color: tokens.colors.text.primary }]}>
+            Create price alert
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: tokens.colors.text.secondary }]}>
+            Choose a stock and set the price level that should trigger a notification.
+          </Text>
         </View>
 
         <StockSelector
@@ -140,7 +154,9 @@ export function CreateAlertScreen() {
         />
 
         {selectedStock && typeof currentPrice === 'number' ? (
-          <Text style={[styles.currentPrice, { color: tokens.colors.textSecondary }]}>Current price ${currentPrice.toFixed(2)}</Text>
+          <Text style={[styles.currentPrice, { color: tokens.colors.textSecondary }]}>
+            Current price ${currentPrice.toFixed(2)}
+          </Text>
         ) : null}
 
         {!isConnected ? (
@@ -153,7 +169,9 @@ export function CreateAlertScreen() {
               },
             ]}
           >
-            <Text style={[styles.offlineTitle, { color: tokens.colors.text.primary }]}>Offline mode</Text>
+            <Text style={[styles.offlineTitle, { color: tokens.colors.text.primary }]}>
+              Offline mode
+            </Text>
             <Text style={[styles.offlineBody, { color: tokens.colors.text.secondary }]}>
               Save now, sync later. We’ll keep this alert pending until you’re back online.
             </Text>
@@ -177,7 +195,9 @@ export function CreateAlertScreen() {
         />
 
         <View style={styles.fieldStack}>
-          <Text style={[styles.directionLabel, { color: tokens.colors.text.secondary }]}>Direction</Text>
+          <Text style={[styles.directionLabel, { color: tokens.colors.text.secondary }]}>
+            Direction
+          </Text>
           <SegmentedControl
             options={[
               { label: 'Above', value: 'above' },
@@ -203,7 +223,9 @@ export function CreateAlertScreen() {
           testID="create-alert-submit-button"
         />
 
-        <Text style={[styles.footerNote, { color: tokens.colors.text.muted }]}>We’ll notify you when the price condition is met.</Text>
+        <Text style={[styles.footerNote, { color: tokens.colors.text.muted }]}>
+          We’ll notify you when the price condition is met.
+        </Text>
       </View>
     </ScreenContainer>
   );

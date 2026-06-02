@@ -9,7 +9,13 @@ interface AlertsSummaryCardProps {
   testID?: string;
 }
 
-export function AlertsSummaryCard({ label, value, subtitle, accent, testID }: AlertsSummaryCardProps) {
+export function AlertsSummaryCard({
+  label,
+  value,
+  subtitle,
+  accent,
+  testID,
+}: AlertsSummaryCardProps) {
   const { tokens } = useTheme();
 
   return (
@@ -25,7 +31,9 @@ export function AlertsSummaryCard({ label, value, subtitle, accent, testID }: Al
     >
       <Text style={[styles.label, { color: tokens.colors.text.secondary }]}>{label}</Text>
       <Text style={[styles.value, { color: tokens.colors.text.primary }]}>{value}</Text>
-      <Text style={[styles.subtitle, { color: accent ?? tokens.colors.textSecondary }]}>{subtitle}</Text>
+      <Text style={[styles.subtitle, { color: accent ?? tokens.colors.textSecondary }]}>
+        {subtitle}
+      </Text>
     </View>
   );
 }

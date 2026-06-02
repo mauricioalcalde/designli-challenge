@@ -20,6 +20,7 @@ export function Card({ title, subtitle, children, onPress, testID }: CardProps) 
     backgroundColor: tokens.colors.bg.surface,
     borderWidth: 1,
     borderColor: tokens.colors.border.subtle,
+    overflow: 'hidden',
     ...tokens.elevation.low,
   };
 

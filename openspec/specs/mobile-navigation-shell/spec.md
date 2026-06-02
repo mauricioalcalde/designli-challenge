@@ -69,6 +69,34 @@ Each nested stack screen **MUST** render a native stack header styled with the d
 - **THEN** the back navigation is provided by the native stack header
 - **AND** no full-width custom back button is rendered in the screen body
 
+### Requirement: Bell Icon Navigation
+
+The bell icon in Stocks and Alerts top bars **MUST** navigate to the Inbox screen (not NotificationsSettings). The bell icon **MUST** be visually distinct from the Alerts tab `notifications` icon. NotificationsSettings **MUST** remain accessible via a gear icon within the Inbox screen.
+
+- GIVEN the user is on the Stocks tab
+- WHEN they tap the bell icon
+- THEN the app navigates to Profile → Inbox
+
+- GIVEN the user is on the Alerts tab
+- WHEN they tap the bell icon
+- THEN the app navigates to Profile → Inbox
+
+- GIVEN the user is on the Inbox screen
+- WHEN they tap the settings gear icon
+- THEN the app navigates to NotificationsSettings
+
+### Requirement: Bell Icon Badge
+
+The bell icon **MUST** display an unread count badge when there are unread notifications. The badge **MUST** be hidden when the count is 0. The badge display **SHOULD** cap at "99+" for large counts.
+
+- GIVEN there are unread notifications
+- WHEN the bell icon renders on the Stocks or Alerts top bar
+- THEN it displays a badge with the unread count (or "99+" if >99)
+
+- GIVEN there are no unread notifications
+- WHEN the bell icon renders
+- THEN the badge is hidden
+
 ### Requirement: Safe Area Correctness
 
 The root screen container **MUST** wrap content in a `SafeAreaView` (or equivalent safe-area provider). Individual screens **MUST NOT** re-apply padding to compensate for missing safe-area insets.

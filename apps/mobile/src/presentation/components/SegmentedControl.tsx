@@ -46,7 +46,9 @@ export function SegmentedControl({ options, value, onChange, testID }: Segmented
                 borderRadius: tokens.radii.md,
               },
             ]}
-            testID={testID ? `${testID}-option-${option.value}` : `segmented-option-${option.value}`}
+            testID={
+              testID ? `${testID}-option-${option.value}` : `segmented-option-${option.value}`
+            }
           >
             <Text
               style={[

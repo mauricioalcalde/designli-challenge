@@ -34,7 +34,9 @@ export function NotificationsSettingsScreen() {
   const platform = useNotificationsStore((state) => state.platform);
   const tokenPreview = useNotificationsStore((state) => state.tokenPreview);
   const refreshStatus = useNotificationsStore((state) => state.refreshStatus);
-  const requestPermissionAndRegister = useNotificationsStore((state) => state.requestPermissionAndRegister);
+  const requestPermissionAndRegister = useNotificationsStore(
+    (state) => state.requestPermissionAndRegister,
+  );
   const openSystemSettings = useNotificationsStore((state) => state.openSystemSettings);
   const { tokens } = useTheme();
 
@@ -80,10 +82,18 @@ export function NotificationsSettingsScreen() {
 
   const cta = useMemo(() => {
     if (!isSupported || permissionStatus === 'unsupported') {
-      return { label: 'Notifications unsupported', disabled: true, action: undefined as (() => Promise<void>) | undefined };
+      return {
+        label: 'Notifications unsupported',
+        disabled: true,
+        action: undefined as (() => Promise<void>) | undefined,
+      };
     }
     if (tokenStatus === 'registered') {
-      return { label: 'Notifications enabled', disabled: true, action: undefined as (() => Promise<void>) | undefined };
+      return {
+        label: 'Notifications enabled',
+        disabled: true,
+        action: undefined as (() => Promise<void>) | undefined,
+      };
     }
     if (permissionStatus === 'denied') {
       return { label: 'Open system settings', disabled: false, action: openSystemSettings };
@@ -95,18 +105,30 @@ export function NotificationsSettingsScreen() {
       return { label: 'Register device', disabled: false, action: requestPermissionAndRegister };
     }
     return { label: 'Enable notifications', disabled: false, action: requestPermissionAndRegister };
-  }, [isSupported, permissionStatus, tokenStatus, openSystemSettings, requestPermissionAndRegister]);
+  }, [
+    isSupported,
+    permissionStatus,
+    tokenStatus,
+    openSystemSettings,
+    requestPermissionAndRegister,
+  ]);
 
   return (
     <ScreenContainer testID="notifications-screen">
       <View style={styles.content}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} testID="notifications-back-button">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            testID="notifications-back-button"
+          >
             <Ionicons name="arrow-back" size={24} color={tokens.colors.text.primary} />
           </TouchableOpacity>
           <View style={styles.topCopy}>
             <Text style={[styles.title, { color: tokens.colors.text.primary }]}>Notifications</Text>
-            <Text style={[styles.subtitle, { color: tokens.colors.text.secondary }]}>Get notified when your alerts are triggered.</Text>
+            <Text style={[styles.subtitle, { color: tokens.colors.text.secondary }]}>
+              Get notified when your alerts are triggered.
+            </Text>
           </View>
         </View>
 
@@ -120,13 +142,21 @@ export function NotificationsSettingsScreen() {
             <NotificationStatusHero title={hero.title} message={hero.message} tone={hero.tone} />
             <NotificationStatusDetailsCard
               permissionStatus={formatPermissionStatus(permissionStatus)}
-              registrationStatus={tokenStatus === 'registered' ? 'Registered' : tokenStatus === 'error' ? 'Failed' : 'Not registered'}
+              registrationStatus={
+                tokenStatus === 'registered'
+                  ? 'Registered'
+                  : tokenStatus === 'error'
+                    ? 'Failed'
+                    : 'Not registered'
+              }
               lastRegistered={lastRegisteredAt ?? 'Never'}
               platform={platform ?? 'Unknown'}
               tokenPreview={tokenPreview}
             />
             <NotificationInfoCard message="Enable notifications after signing in. This device needs a registered token so triggered alerts can be delivered in real time." />
-            {error ? <Text style={[styles.error, { color: tokens.colors.error }]}>{error}</Text> : null}
+            {error ? (
+              <Text style={[styles.error, { color: tokens.colors.error }]}>{error}</Text>
+            ) : null}
             <Button
               title={cta.label}
               onPress={() => void cta.action?.()}

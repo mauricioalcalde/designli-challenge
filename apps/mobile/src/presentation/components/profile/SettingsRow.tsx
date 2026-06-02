@@ -41,11 +41,17 @@ export function SettingsRow({
       <Ionicons name={icon} size={20} color={tokens.colors.text.secondary} />
       <View style={styles.copy}>
         <Text style={[styles.title, { color: tokens.colors.text.primary }]}>{title}</Text>
-        {subtitle ? <Text style={[styles.subtitle, { color: tokens.colors.text.secondary }]}>{subtitle}</Text> : null}
+        {subtitle ? (
+          <Text style={[styles.subtitle, { color: tokens.colors.text.secondary }]}>{subtitle}</Text>
+        ) : null}
       </View>
       {badgeText ? <Badge text={badgeText} variant={badgeVariant} /> : null}
-      {value ? <Text style={[styles.value, { color: tokens.colors.text.secondary }]}>{value}</Text> : null}
-      {onPress ? <Ionicons name="chevron-forward" size={18} color={tokens.colors.text.muted} /> : null}
+      {value ? (
+        <Text style={[styles.value, { color: tokens.colors.text.secondary }]}>{value}</Text>
+      ) : null}
+      {onPress ? (
+        <Ionicons name="chevron-forward" size={18} color={tokens.colors.text.muted} />
+      ) : null}
     </Wrapper>
   );
 }

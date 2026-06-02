@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-gifted-charts';
@@ -88,6 +88,7 @@ export function StockChartScreen() {
   const loadChart = useStocksStore((state) => state.loadChart);
   const refreshStocks = useStocksStore((state) => state.refresh);
   const { tokens } = useTheme();
+  const [chartWidth, setChartWidth] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -317,32 +318,43 @@ export function StockChartScreen() {
             subtitle={`${symbol} · ${chartRange}`}
             testID="stock-chart-area"
           >
-            <LineChart
-              data={lineData}
-              color={tokens.colors.chart.primary}
-              thickness={3}
-              startFillColor={tokens.colors.chart.primary}
-              endFillColor="transparent"
-              startOpacity={0.28}
-              endOpacity={0.02}
-              spacing={40}
-              areaChart
-              curved
-              height={240}
-              hideDataPoints
-              backgroundColor={tokens.colors.bg.elevated}
-              yAxisColor={tokens.colors.chart.grid}
-              xAxisColor={tokens.colors.chart.grid}
-              rulesColor={tokens.colors.chart.grid}
-              showVerticalLines
-              verticalLinesColor={tokens.colors.chart.grid}
-              yAxisTextStyle={{ color: tokens.colors.chart.label, fontSize: 10 }}
-              xAxisLabelTextStyle={{ color: tokens.colors.chart.label, fontSize: 10 }}
-              formatYLabel={formatPriceLabel}
-              noOfSections={4}
-              yAxisMinValue={yAxisRange.min}
-              yAxisMaxValue={yAxisRange.max}
-            />
+            <View
+              style={styles.chartViewport}
+              onLayout={(event) => {
+                const w = event.nativeEvent.layout.width;
+                if (w > 0 && w !== chartWidth) setChartWidth(w);
+              }}
+            >
+              {chartWidth > 0 ? (
+                <LineChart
+                  width={chartWidth}
+                  data={lineData}
+                  color={tokens.colors.chart.primary}
+                  thickness={3}
+                  startFillColor={tokens.colors.chart.primary}
+                  endFillColor="transparent"
+                  startOpacity={0.28}
+                  endOpacity={0.02}
+                  spacing={(chartWidth / Math.max(lineData.length, 1)) * 0.7}
+                  areaChart
+                  curved
+                  height={240}
+                  hideDataPoints
+                  backgroundColor={tokens.colors.bg.elevated}
+                  yAxisColor={tokens.colors.chart.grid}
+                  xAxisColor={tokens.colors.chart.grid}
+                  rulesColor={tokens.colors.chart.grid}
+                  showVerticalLines
+                  verticalLinesColor={tokens.colors.chart.grid}
+                  yAxisTextStyle={{ color: tokens.colors.chart.label, fontSize: 10 }}
+                  xAxisLabelTextStyle={{ color: tokens.colors.chart.label, fontSize: 10 }}
+                  formatYLabel={formatPriceLabel}
+                  noOfSections={4}
+                  yAxisMinValue={yAxisRange.min}
+                  yAxisMaxValue={yAxisRange.max}
+                />
+              ) : null}
+            </View>
             {rangeStats ? (
               <RangeStatsRow open={rangeStats.open} high={rangeStats.high} low={rangeStats.low} />
             ) : null}
@@ -401,5 +413,9 @@ const styles = StyleSheet.create({
     minHeight: 280,
     justifyContent: 'center',
     gap: 16,
+  },
+  chartViewport: {
+    width: '100%',
+    overflow: 'hidden',
   },
 });

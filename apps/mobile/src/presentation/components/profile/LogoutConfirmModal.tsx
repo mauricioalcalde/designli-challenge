@@ -13,14 +13,32 @@ export function LogoutConfirmModal({ visible, onCancel, onConfirm }: LogoutConfi
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle }]}> 
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle },
+          ]}
+        >
           <Text style={[styles.title, { color: tokens.colors.text.primary }]}>Logout</Text>
-          <Text style={[styles.message, { color: tokens.colors.text.secondary }]}>Are you sure you want to sign out?</Text>
+          <Text style={[styles.message, { color: tokens.colors.text.secondary }]}>
+            Are you sure you want to sign out?
+          </Text>
           <View style={styles.actions}>
-            <TouchableOpacity onPress={onCancel} activeOpacity={0.75} style={[styles.button, { borderColor: tokens.colors.border.subtle }]}> 
+            <TouchableOpacity
+              onPress={onCancel}
+              activeOpacity={0.75}
+              style={[styles.button, { borderColor: tokens.colors.border.subtle }]}
+            >
               <Text style={[styles.buttonText, { color: tokens.colors.text.primary }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onConfirm} activeOpacity={0.75} style={[styles.button, { backgroundColor: 'rgba(239,95,103,0.14)', borderColor: tokens.colors.error }]}> 
+            <TouchableOpacity
+              onPress={onConfirm}
+              activeOpacity={0.75}
+              style={[
+                styles.button,
+                { backgroundColor: 'rgba(239,95,103,0.14)', borderColor: tokens.colors.error },
+              ]}
+            >
               <Text style={[styles.buttonText, { color: tokens.colors.error }]}>Logout</Text>
             </TouchableOpacity>
           </View>

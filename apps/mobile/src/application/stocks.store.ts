@@ -7,13 +7,20 @@ import { StocksLoadError } from '../domain/stocks.errors';
 export interface StocksState {
   // ---- list slice ----
   items: StockListing[];
+  isInitialLoading: boolean;
+  isBackgroundRefreshing: boolean;
+  isManualRefreshing: boolean;
   isLoading: boolean;
   isRefreshing: boolean;
   isStale: boolean;
   lastUpdatedAt: string | null;
   error: string | null;
+  consecutiveRefreshFailures: number;
   staleReason?: 'network' | 'provider' | 'unknown' | null;
   staleMessage?: string | null;
+  loadInitial: () => Promise<void>;
+  refreshInBackground: () => Promise<void>;
+  refreshManually: () => Promise<void>;
   load: () => Promise<void>;
   refresh: () => Promise<void>;
 
@@ -65,13 +72,13 @@ export function createStocksStore(
     ) {
       return {
         reason: 'provider',
-        staleMessage: 'Live provider unavailable. Showing cached data.',
+        staleMessage: 'Market data may be outdated.',
       };
     }
 
     return {
       reason: 'unknown',
-      staleMessage: "We couldn't refresh market data. Showing cached data.",
+      staleMessage: 'Market data may be outdated.',
     };
   };
 
@@ -82,26 +89,40 @@ export function createStocksStore(
 
     return {
       items,
+      isInitialLoading: false,
+      isBackgroundRefreshing: false,
+      isManualRefreshing: false,
+      isLoading: false,
+      isRefreshing: false,
       isStale: false,
       lastUpdatedAt: savedAt,
       error: null,
+      consecutiveRefreshFailures: 0,
       staleReason: null,
       staleMessage: null,
     };
   };
 
-  const buildFailureState = (error: unknown) => {
+  const buildFailureState = (error: unknown, current: StocksState) => {
     const loadError = StocksLoadError.fromUnknown(error);
     const snapshot = snapshotStorage.get();
+    const fallbackItems = current.items.length > 0 ? current.items : (snapshot?.items ?? []);
+    const hasFallbackItems = fallbackItems.length > 0;
 
-    if (snapshot) {
+    if (hasFallbackItems) {
       const failure = classifyFailure(loadError.message);
 
       return {
-        items: snapshot.items,
+        items: fallbackItems,
+        isInitialLoading: false,
+        isBackgroundRefreshing: false,
+        isManualRefreshing: false,
+        isLoading: false,
+        isRefreshing: false,
         isStale: true,
-        lastUpdatedAt: snapshot.savedAt,
+        lastUpdatedAt: current.lastUpdatedAt ?? snapshot?.savedAt ?? null,
         error: null,
+        consecutiveRefreshFailures: current.consecutiveRefreshFailures + 1,
         staleReason: failure.reason,
         staleMessage: failure.staleMessage,
       };
@@ -109,12 +130,43 @@ export function createStocksStore(
 
     return {
       items: [],
+      isInitialLoading: false,
+      isBackgroundRefreshing: false,
+      isManualRefreshing: false,
+      isLoading: false,
+      isRefreshing: false,
       isStale: false,
       lastUpdatedAt: null,
       error: loadError.message,
+      consecutiveRefreshFailures: 0,
       staleReason: null,
       staleMessage: null,
     };
+  };
+
+  const hasPendingListRequest = (state: StocksState) =>
+    state.isInitialLoading || state.isBackgroundRefreshing || state.isManualRefreshing;
+
+  const hydrateFromSnapshot = (setState: (partial: Partial<StocksState>) => void): boolean => {
+    const snapshot = snapshotStorage.get();
+    if (!snapshot) return false;
+
+    setState({
+      items: snapshot.items,
+      isInitialLoading: false,
+      isBackgroundRefreshing: false,
+      isManualRefreshing: false,
+      isLoading: false,
+      isRefreshing: false,
+      isStale: false,
+      lastUpdatedAt: snapshot.savedAt,
+      error: null,
+      consecutiveRefreshFailures: 0,
+      staleReason: null,
+      staleMessage: null,
+    });
+
+    return true;
   };
 
   const rangeToWindowMs = (range: ChartRange): number => {
@@ -162,34 +214,90 @@ export function createStocksStore(
   return create<StocksState>()((set, get) => ({
     // ---- list slice ----
     items: [],
+    isInitialLoading: false,
+    isBackgroundRefreshing: false,
+    isManualRefreshing: false,
     isLoading: false,
     isRefreshing: false,
     isStale: false,
     lastUpdatedAt: null,
     error: null,
+    consecutiveRefreshFailures: 0,
     staleReason: null,
     staleMessage: null,
 
-    load: async () => {
-      set({ isLoading: true, error: null, staleReason: null, staleMessage: null });
+    loadInitial: async () => {
+      const current = get();
+      if (hasPendingListRequest(current)) return;
+
+      if (current.items.length === 0 && hydrateFromSnapshot((partial) => set(partial))) {
+        await get().refreshInBackground();
+        return;
+      }
+
+      set({
+        isInitialLoading: true,
+        isBackgroundRefreshing: false,
+        isManualRefreshing: false,
+        isLoading: true,
+        isRefreshing: false,
+        error: null,
+        staleReason: null,
+        staleMessage: null,
+      });
 
       try {
         const items = await stocksRepo.list();
-        set({ ...syncSuccessState(items), isLoading: false });
+        set(syncSuccessState(items));
       } catch (error) {
-        set({ ...buildFailureState(error), isLoading: false });
+        set(buildFailureState(error, get()));
       }
     },
 
-    refresh: async () => {
-      set({ isRefreshing: true, error: null, staleReason: null, staleMessage: null });
+    refreshInBackground: async () => {
+      const current = get();
+      if (hasPendingListRequest(current)) return;
+
+      set({
+        isBackgroundRefreshing: true,
+        isManualRefreshing: false,
+        isRefreshing: true,
+        error: null,
+      });
 
       try {
         const items = await stocksRepo.list();
-        set({ ...syncSuccessState(items), isRefreshing: false });
+        set(syncSuccessState(items));
       } catch (error) {
-        set({ ...buildFailureState(error), isRefreshing: false });
+        set(buildFailureState(error, get()));
       }
+    },
+
+    refreshManually: async () => {
+      const current = get();
+      if (hasPendingListRequest(current)) return;
+
+      set({
+        isBackgroundRefreshing: false,
+        isManualRefreshing: true,
+        isRefreshing: true,
+        error: null,
+      });
+
+      try {
+        const items = await stocksRepo.list();
+        set(syncSuccessState(items));
+      } catch (error) {
+        set(buildFailureState(error, get()));
+      }
+    },
+
+    load: async () => {
+      await get().loadInitial();
+    },
+
+    refresh: async () => {
+      await get().refreshManually();
     },
 
     // ---- chart slice ----

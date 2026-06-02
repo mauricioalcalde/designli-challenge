@@ -10,7 +10,12 @@ export function NotificationInfoCard({ message }: NotificationInfoCardProps) {
   const { tokens } = useTheme();
 
   return (
-    <View style={[styles.card, { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle }]}> 
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle },
+      ]}
+    >
       <Ionicons name="information-circle-outline" size={20} color={tokens.colors.info} />
       <Text style={[styles.message, { color: tokens.colors.text.secondary }]}>{message}</Text>
     </View>

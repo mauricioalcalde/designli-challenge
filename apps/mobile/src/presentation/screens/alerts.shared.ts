@@ -24,10 +24,16 @@ export function formatAlertPrice(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-export function formatAlertSummary(symbol: string, direction: AlertDirection, threshold: number): string {
+export function formatAlertSummary(
+  symbol: string,
+  direction: AlertDirection,
+  threshold: number,
+): string {
   return `Get notified when ${symbol} price goes ${direction} ${formatAlertPrice(threshold)}`;
 }
 
-export function getRemoteAlertStatus(item: AlertResponse): Extract<AlertItemStatus, 'active' | 'triggered'> {
+export function getRemoteAlertStatus(
+  item: AlertResponse,
+): Extract<AlertItemStatus, 'active' | 'triggered'> {
   return !item.active || item.lastTriggeredAt ? 'triggered' : 'active';
 }

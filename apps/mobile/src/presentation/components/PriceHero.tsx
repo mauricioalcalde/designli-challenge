@@ -59,7 +59,10 @@ export function PriceHero({ symbol, name, price, changePercent, testID }: PriceH
         >
           {name}
         </Text>
-        <Badge text={formatChangePercent(changePercent)} variant={changePercent >= 0 ? 'success' : 'error'} />
+        <Badge
+          text={formatChangePercent(changePercent)}
+          variant={changePercent >= 0 ? 'success' : 'error'}
+        />
       </View>
     </Card>
   );

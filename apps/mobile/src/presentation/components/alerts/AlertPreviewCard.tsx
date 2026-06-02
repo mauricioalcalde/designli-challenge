@@ -23,7 +23,12 @@ export function AlertPreviewCard({ message, complete }: AlertPreviewCardProps) {
       testID="create-alert-preview-card"
     >
       <Ionicons name="notifications-outline" size={22} color={accent} />
-      <Text style={[styles.message, { color: complete ? tokens.colors.text.primary : tokens.colors.text.secondary }]}>
+      <Text
+        style={[
+          styles.message,
+          { color: complete ? tokens.colors.text.primary : tokens.colors.text.secondary },
+        ]}
+      >
         {message}
       </Text>
     </View>

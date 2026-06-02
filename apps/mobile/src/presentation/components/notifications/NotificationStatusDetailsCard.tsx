@@ -27,7 +27,12 @@ interface NotificationStatusDetailsCardProps {
 export function NotificationStatusDetailsCard(props: NotificationStatusDetailsCardProps) {
   const { tokens } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle }]}> 
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle },
+      ]}
+    >
       <Row label="Permission status" value={props.permissionStatus} />
       <Row label="Device registration" value={props.registrationStatus} />
       <Row label="Last registered" value={props.lastRegistered} />

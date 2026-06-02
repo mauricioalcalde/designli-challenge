@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StocksScreen } from '../screens/StocksScreen';
+import { InboxScreen } from '../screens/InboxScreen';
 import { useTheme } from '../theme/useTheme';
 import { AlertsStack } from './AlertsStack';
 import { ProfileStack } from './ProfileStack';
@@ -38,6 +39,11 @@ function StocksTab() {
         // eslint-disable-next-line @typescript-eslint/no-var-requires -- React Navigation getComponent expects a sync loader.
         getComponent={() => require('../screens/StockChartScreen').StockChartScreen}
         options={{ headerShown: false }}
+      />
+      <StocksStack.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{ title: 'Notifications', headerBackTitle: 'Back' }}
       />
     </StocksStack.Navigator>
   );
@@ -76,7 +82,7 @@ export function MainTabs() {
         component={AlertsStack}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications" color={color} size={size} />
+            <Ionicons name="alarm-outline" color={color} size={size} />
           ),
         }}
       />

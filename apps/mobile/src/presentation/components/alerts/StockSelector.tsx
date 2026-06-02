@@ -30,7 +30,8 @@ export function StockSelector({ stocks, selectedStock, onSelect, error }: StockS
     if (!normalized) return stocks;
     return stocks.filter(
       (item) =>
-        item.symbol.toLowerCase().includes(normalized) || item.name.toLowerCase().includes(normalized),
+        item.symbol.toLowerCase().includes(normalized) ||
+        item.name.toLowerCase().includes(normalized),
     );
   }, [query, stocks]);
 
@@ -53,11 +54,17 @@ export function StockSelector({ stocks, selectedStock, onSelect, error }: StockS
         <View style={styles.selectorCopy}>
           {selectedStock ? (
             <>
-              <Text style={[styles.symbol, { color: tokens.colors.text.primary }]}>{selectedStock.symbol}</Text>
-              <Text style={[styles.company, { color: tokens.colors.text.secondary }]}>{selectedStock.name}</Text>
+              <Text style={[styles.symbol, { color: tokens.colors.text.primary }]}>
+                {selectedStock.symbol}
+              </Text>
+              <Text style={[styles.company, { color: tokens.colors.text.secondary }]}>
+                {selectedStock.name}
+              </Text>
             </>
           ) : (
-            <Text style={[styles.placeholder, { color: tokens.colors.text.muted }]}>Select a stock</Text>
+            <Text style={[styles.placeholder, { color: tokens.colors.text.muted }]}>
+              Select a stock
+            </Text>
           )}
         </View>
         {selectedStock ? (
@@ -80,7 +87,9 @@ export function StockSelector({ stocks, selectedStock, onSelect, error }: StockS
               },
             ]}
           >
-            <Text style={[styles.sheetTitle, { color: tokens.colors.text.primary }]}>Select stock</Text>
+            <Text style={[styles.sheetTitle, { color: tokens.colors.text.primary }]}>
+              Select stock
+            </Text>
             <Input
               label="Search"
               value={query}
@@ -109,10 +118,16 @@ export function StockSelector({ stocks, selectedStock, onSelect, error }: StockS
                   testID={`create-alert-stock-option-${item.symbol}`}
                 >
                   <View style={styles.optionCopy}>
-                    <Text style={[styles.optionSymbol, { color: tokens.colors.text.primary }]}>{item.symbol}</Text>
-                    <Text style={[styles.optionCompany, { color: tokens.colors.text.secondary }]}>{item.name}</Text>
+                    <Text style={[styles.optionSymbol, { color: tokens.colors.text.primary }]}>
+                      {item.symbol}
+                    </Text>
+                    <Text style={[styles.optionCompany, { color: tokens.colors.text.secondary }]}>
+                      {item.name}
+                    </Text>
                   </View>
-                  <Text style={[styles.optionPrice, { color: tokens.colors.text.primary }]}>${item.currentPrice.toFixed(2)}</Text>
+                  <Text style={[styles.optionPrice, { color: tokens.colors.text.primary }]}>
+                    ${item.currentPrice.toFixed(2)}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

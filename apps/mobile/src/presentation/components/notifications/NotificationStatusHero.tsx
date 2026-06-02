@@ -20,7 +20,12 @@ export function NotificationStatusHero({ title, message, tone }: NotificationSta
           : tokens.colors.info;
 
   return (
-    <View style={[styles.card, { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle }]}> 
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border.subtle },
+      ]}
+    >
       <View style={[styles.iconWrap, { backgroundColor: `${color}22` }]}>
         <Ionicons name="notifications-outline" size={28} color={color} />
       </View>

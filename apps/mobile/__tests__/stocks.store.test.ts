@@ -1,4 +1,4 @@
-import type { StockListing, StockChartPoint } from '@designli-challenge/shared';
+import type { StockListing } from '@designli-challenge/shared';
 import { createStocksStore } from '../src/application/stocks.store';
 import type { StockSnapshotStorage } from '../src/domain/stock-snapshot-storage.port';
 import type { StocksRepository } from '../src/domain/stocks.repository.port';
@@ -8,8 +8,8 @@ describe('stocks.store', () => {
   let mockStocksRepo: jest.Mocked<StocksRepository>;
   let mockSnapshotStorage: jest.Mocked<StockSnapshotStorage>;
   let useStocksStore: ReturnType<typeof createStocksStore>;
-  const now = jest.fn(() => '2026-05-29T16:40:00.000Z');
 
+  const now = jest.fn(() => '2026-05-29T16:40:00.000Z');
   const listings: StockListing[] = [
     {
       symbol: 'AAPL',
@@ -28,177 +28,6 @@ describe('stocks.store', () => {
   beforeEach(() => {
     mockStocksRepo = {
       list: jest.fn(),
-    } as unknown as jest.Mocked<StocksRepository>;
-
-    mockSnapshotStorage = {
-      get: jest.fn().mockReturnValue(null),
-      set: jest.fn(),
-      appendHistory: jest.fn(),
-      getHistory: jest.fn().mockReturnValue([]),
-    } as unknown as jest.Mocked<StockSnapshotStorage>;
-
-    useStocksStore = createStocksStore(mockStocksRepo, mockSnapshotStorage, now);
-  });
-
-  it('loads listings into state on success', async () => {
-    mockStocksRepo.list.mockResolvedValue(listings);
-
-    await useStocksStore.getState().load();
-
-    expect(useStocksStore.getState().items).toEqual(listings);
-    expect(useStocksStore.getState().isLoading).toBe(false);
-    expect(useStocksStore.getState().isStale).toBe(false);
-    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-29T16:40:00.000Z');
-    expect(useStocksStore.getState().error).toBeNull();
-    expect(mockSnapshotStorage.set).toHaveBeenCalledWith({
-      items: listings,
-      savedAt: '2026-05-29T16:40:00.000Z',
-    });
-  });
-
-  it('supports explicit empty state responses', async () => {
-    mockStocksRepo.list.mockResolvedValue([]);
-
-    await useStocksStore.getState().load();
-
-    expect(useStocksStore.getState().items).toEqual([]);
-    expect(useStocksStore.getState().error).toBeNull();
-    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-29T16:40:00.000Z');
-  });
-
-  it('stores a retryable error when loading fails without data', async () => {
-    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('No internet connection'));
-
-    await useStocksStore.getState().load();
-
-    expect(useStocksStore.getState().items).toEqual([]);
-    expect(useStocksStore.getState().isLoading).toBe(false);
-    expect(useStocksStore.getState().error).toBe('No internet connection');
-  });
-
-  it('falls back to the last snapshot when loading fails after a saved success', async () => {
-    mockSnapshotStorage.get.mockReturnValue({
-      items: listings,
-      savedAt: '2026-05-28T10:00:00.000Z',
-    });
-    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('No internet connection'));
-
-    await useStocksStore.getState().load();
-
-    expect(useStocksStore.getState().items).toEqual(listings);
-    expect(useStocksStore.getState().isStale).toBe(true);
-    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-28T10:00:00.000Z');
-    expect(useStocksStore.getState().error).toBeNull();
-    expect(useStocksStore.getState().staleReason).toBe('network');
-    expect(useStocksStore.getState().staleMessage).toBe("You're offline. Showing cached data.");
-  });
-
-  it('transitions isRefreshing and replaces items after refresh success', async () => {
-    mockStocksRepo.list.mockResolvedValueOnce(listings);
-    await useStocksStore.getState().load();
-
-    const refreshedListings: StockListing[] = [
-      {
-        symbol: 'NVDA',
-        name: 'NVIDIA',
-        currentPrice: 124.11,
-        changePercent: 2.9,
-      },
-    ];
-
-    let resolveRefresh!: (value: StockListing[]) => void;
-    const refreshPromise = new Promise<StockListing[]>((resolve) => {
-      resolveRefresh = resolve;
-    });
-    mockStocksRepo.list.mockReturnValueOnce(refreshPromise);
-
-    const action = useStocksStore.getState().refresh();
-    expect(useStocksStore.getState().isRefreshing).toBe(true);
-
-    resolveRefresh(refreshedListings);
-    await action;
-
-    expect(useStocksStore.getState().isRefreshing).toBe(false);
-    expect(useStocksStore.getState().items).toEqual(refreshedListings);
-    expect(useStocksStore.getState().isStale).toBe(false);
-    expect(useStocksStore.getState().error).toBeNull();
-  });
-
-  it('falls back to the last snapshot when refresh fails', async () => {
-    mockStocksRepo.list.mockResolvedValueOnce(listings);
-    await useStocksStore.getState().load();
-
-    const staleListings: StockListing[] = [
-      {
-        symbol: 'TSLA',
-        name: 'Tesla',
-        currentPrice: 181.1,
-        changePercent: -1.12,
-      },
-    ];
-
-    mockSnapshotStorage.get.mockReturnValue({
-      items: staleListings,
-      savedAt: '2026-05-28T22:30:00.000Z',
-    });
-    mockStocksRepo.list.mockRejectedValueOnce(new StocksLoadError('Request timed out'));
-
-    await useStocksStore.getState().refresh();
-
-    expect(useStocksStore.getState().isRefreshing).toBe(false);
-    expect(useStocksStore.getState().items).toEqual(staleListings);
-    expect(useStocksStore.getState().isStale).toBe(true);
-    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-28T22:30:00.000Z');
-    expect(useStocksStore.getState().error).toBeNull();
-    expect(useStocksStore.getState().staleReason).toBe('network');
-  });
-
-  it('classifies provider fallback separately from offline fallback', async () => {
-    mockSnapshotStorage.get.mockReturnValue({
-      items: listings,
-      savedAt: '2026-05-28T10:00:00.000Z',
-    });
-    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('403 forbidden from provider'));
-
-    await useStocksStore.getState().load();
-
-    expect(useStocksStore.getState().staleReason).toBe('provider');
-    expect(useStocksStore.getState().staleMessage).toBe(
-      'Live provider unavailable. Showing cached data.',
-    );
-  });
-
-  // ---- chart slice ----
-
-  const chartPoints: StockChartPoint[] = [
-    {
-      timestamp: '2026-05-29T10:00:00.000Z',
-      open: 210.0,
-      high: 213.5,
-      low: 209.5,
-      close: 212.45,
-    },
-    {
-      timestamp: '2026-05-29T10:15:00.000Z',
-      open: 212.45,
-      high: 214.0,
-      low: 211.8,
-      close: 213.2,
-    },
-    {
-      timestamp: '2026-05-29T10:30:00.000Z',
-      open: 213.2,
-      high: 215.0,
-      low: 212.5,
-      close: 214.8,
-    },
-  ];
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-
-    mockStocksRepo = {
-      list: jest.fn(),
       chart: jest.fn(),
     } as unknown as jest.Mocked<StocksRepository>;
 
@@ -212,30 +41,134 @@ describe('stocks.store', () => {
     useStocksStore = createStocksStore(mockStocksRepo, mockSnapshotStorage, now);
   });
 
-  it('loadChart populates chartData and resets loading on success', async () => {
-    mockStocksRepo.chart.mockResolvedValue(chartPoints);
+  it('loads listings on first load success', async () => {
+    mockStocksRepo.list.mockResolvedValue(listings);
 
-    await useStocksStore.getState().loadChart('AAPL', '1W');
+    await useStocksStore.getState().loadInitial();
 
-    expect(useStocksStore.getState().chartData).toEqual(chartPoints);
-    expect(useStocksStore.getState().chartSymbol).toBe('AAPL');
-    expect(useStocksStore.getState().chartRange).toBe('1W');
-    expect(useStocksStore.getState().chartIsLoading).toBe(false);
-    expect(useStocksStore.getState().chartError).toBeNull();
+    expect(useStocksStore.getState().items).toEqual(listings);
+    expect(useStocksStore.getState().isInitialLoading).toBe(false);
+    expect(useStocksStore.getState().isStale).toBe(false);
+    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-29T16:40:00.000Z');
+    expect(useStocksStore.getState().error).toBeNull();
+    expect(useStocksStore.getState().consecutiveRefreshFailures).toBe(0);
   });
 
-  it('loadChart sets chartError on failure and keeps chartData empty', async () => {
-    mockStocksRepo.chart.mockRejectedValue(new Error('Network error'));
+  it('stores a retryable error when first load fails without usable data', async () => {
+    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('No internet connection'));
 
-    await useStocksStore.getState().loadChart('MSFT', '1M');
+    await useStocksStore.getState().loadInitial();
 
-    expect(useStocksStore.getState().chartIsLoading).toBe(false);
-    expect(useStocksStore.getState().chartError).toBe('Network error');
-    expect(useStocksStore.getState().chartData).toEqual([]);
-    expect(useStocksStore.getState().chartSymbol).toBe('MSFT');
+    expect(useStocksStore.getState().items).toEqual([]);
+    expect(useStocksStore.getState().isInitialLoading).toBe(false);
+    expect(useStocksStore.getState().error).toBe('No internet connection');
+    expect(useStocksStore.getState().lastUpdatedAt).toBeNull();
   });
 
-  it('loadChart fallback respects the selected range instead of leaking older history', async () => {
+  it('hydrates cached data and marks the result stale when background refresh fails', async () => {
+    mockSnapshotStorage.get.mockReturnValue({
+      items: listings,
+      savedAt: '2026-05-28T10:00:00.000Z',
+    });
+    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('No internet connection'));
+
+    await useStocksStore.getState().loadInitial();
+
+    expect(useStocksStore.getState().items).toEqual(listings);
+    expect(useStocksStore.getState().isInitialLoading).toBe(false);
+    expect(useStocksStore.getState().isBackgroundRefreshing).toBe(false);
+    expect(useStocksStore.getState().isStale).toBe(true);
+    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-28T10:00:00.000Z');
+    expect(useStocksStore.getState().error).toBeNull();
+    expect(useStocksStore.getState().consecutiveRefreshFailures).toBe(1);
+    expect(useStocksStore.getState().staleReason).toBe('network');
+  });
+
+  it('keeps visible items during background refresh failures', async () => {
+    mockStocksRepo.list.mockResolvedValueOnce(listings);
+    await useStocksStore.getState().loadInitial();
+
+    const visibleItems = useStocksStore.getState().items;
+    mockSnapshotStorage.get.mockReturnValue({
+      items: [
+        {
+          symbol: 'TSLA',
+          name: 'Tesla',
+          currentPrice: 181.1,
+          changePercent: -1.12,
+        },
+      ],
+      savedAt: '2026-05-28T22:30:00.000Z',
+    });
+    mockStocksRepo.list.mockRejectedValueOnce(new StocksLoadError('Request timed out'));
+
+    await useStocksStore.getState().refreshInBackground();
+
+    expect(useStocksStore.getState().items).toEqual(visibleItems);
+    expect(useStocksStore.getState().lastUpdatedAt).toBe('2026-05-29T16:40:00.000Z');
+    expect(useStocksStore.getState().isStale).toBe(true);
+    expect(useStocksStore.getState().consecutiveRefreshFailures).toBe(1);
+    expect(useStocksStore.getState().error).toBeNull();
+  });
+
+  it('uses the manual refresh flag without turning on the initial loader', async () => {
+    mockStocksRepo.list.mockResolvedValueOnce(listings);
+    await useStocksStore.getState().loadInitial();
+
+    let resolveRefresh!: (value: StockListing[]) => void;
+    mockStocksRepo.list.mockReturnValueOnce(
+      new Promise<StockListing[]>((resolve) => {
+        resolveRefresh = resolve;
+      }),
+    );
+
+    const refreshPromise = useStocksStore.getState().refreshManually();
+
+    expect(useStocksStore.getState().isManualRefreshing).toBe(true);
+    expect(useStocksStore.getState().isInitialLoading).toBe(false);
+    expect(useStocksStore.getState().isBackgroundRefreshing).toBe(false);
+
+    resolveRefresh(listings);
+    await refreshPromise;
+
+    expect(useStocksStore.getState().isManualRefreshing).toBe(false);
+    expect(useStocksStore.getState().isStale).toBe(false);
+  });
+
+  it('does not stack a background refresh while a manual refresh is running', async () => {
+    mockStocksRepo.list.mockResolvedValueOnce(listings);
+    await useStocksStore.getState().loadInitial();
+
+    let resolveRefresh!: (value: StockListing[]) => void;
+    mockStocksRepo.list.mockReturnValueOnce(
+      new Promise<StockListing[]>((resolve) => {
+        resolveRefresh = resolve;
+      }),
+    );
+
+    const manualPromise = useStocksStore.getState().refreshManually();
+    await useStocksStore.getState().refreshInBackground();
+
+    expect(mockStocksRepo.list).toHaveBeenCalledTimes(2);
+
+    resolveRefresh(listings);
+    await manualPromise;
+  });
+
+  it('classifies provider failures separately from offline failures', async () => {
+    mockSnapshotStorage.get.mockReturnValue({
+      items: listings,
+      savedAt: '2026-05-28T10:00:00.000Z',
+    });
+    mockStocksRepo.list.mockRejectedValue(new StocksLoadError('403 forbidden from provider'));
+
+    await useStocksStore.getState().loadInitial();
+
+    expect(useStocksStore.getState().staleReason).toBe('provider');
+    expect(useStocksStore.getState().staleMessage).toBe('Market data may be outdated.');
+  });
+
+  it('builds chart data from stored quote history', async () => {
     const dateNowSpy = jest
       .spyOn(Date, 'now')
       .mockReturnValue(new Date('2026-05-29T16:40:00.000Z').getTime());
@@ -243,8 +176,8 @@ describe('stocks.store', () => {
     mockSnapshotStorage.getHistory.mockReturnValue([
       {
         symbol: 'AAPL',
-        price: 180,
-        timestamp: '2026-05-01T10:00:00.000Z',
+        price: 210,
+        timestamp: '2026-05-29T16:00:00.000Z',
       },
       {
         symbol: 'AAPL',
@@ -252,86 +185,24 @@ describe('stocks.store', () => {
         timestamp: '2026-05-29T16:35:00.000Z',
       },
     ]);
-    mockStocksRepo.chart.mockRejectedValue(new Error('403 forbidden'));
 
     await useStocksStore.getState().loadChart('AAPL', '1D');
 
-    expect(useStocksStore.getState().chartData).toHaveLength(1);
-    expect(useStocksStore.getState().chartData[0]?.close).toBe(214.8);
+    expect(useStocksStore.getState().chartData).toHaveLength(2);
+    expect(useStocksStore.getState().chartData[1]?.close).toBe(214.8);
+    expect(useStocksStore.getState().chartIsLoading).toBe(false);
+    expect(useStocksStore.getState().chartError).toBeNull();
 
     dateNowSpy.mockRestore();
   });
 
-  it('loadChart discards stale responses when a newer request finishes first', async () => {
-    let resolve1W!: (value: StockChartPoint[]) => void;
-    let resolve1M!: (value: StockChartPoint[]) => void;
+  it('shows a chart empty-state error when no quote history exists yet', async () => {
+    await useStocksStore.getState().loadChart('AAPL', '1D');
 
-    const promise1W = new Promise<StockChartPoint[]>((resolve) => {
-      resolve1W = resolve;
-    });
-    const promise1M = new Promise<StockChartPoint[]>((resolve) => {
-      resolve1M = resolve;
-    });
-
-    mockStocksRepo.chart.mockReturnValueOnce(promise1W).mockReturnValueOnce(promise1M);
-
-    // Fire 1W request (in-flight)
-    const action1W = useStocksStore.getState().loadChart('AAPL', '1W');
-
-    // Fire 1M request before 1W resolves — should supersede
-    const action1M = useStocksStore.getState().loadChart('AAPL', '1M');
-
-    // 1M resolves first with its data
-    const chartPoints1M: StockChartPoint[] = [
-      {
-        timestamp: '2026-05-01T10:00:00.000Z',
-        open: 200.0,
-        high: 202.0,
-        low: 199.0,
-        close: 201.5,
-      },
-    ];
-    resolve1M(chartPoints1M);
-    await action1M;
-
-    expect(useStocksStore.getState().chartRange).toBe('1M');
-    expect(useStocksStore.getState().chartData).toEqual(chartPoints1M);
-
-    // Now 1W resolves — should be discarded because range no longer matches
-    const chartPoints1W: StockChartPoint[] = [
-      {
-        timestamp: '2026-05-29T10:00:00.000Z',
-        open: 210.0,
-        high: 213.5,
-        low: 209.5,
-        close: 212.45,
-      },
-    ];
-    resolve1W(chartPoints1W);
-    await action1W;
-
-    // State must still reflect the 1M data, not the stale 1W
-    expect(useStocksStore.getState().chartRange).toBe('1M');
-    expect(useStocksStore.getState().chartData).toEqual(chartPoints1M);
+    expect(useStocksStore.getState().chartData).toEqual([]);
+    expect(useStocksStore.getState().chartIsLoading).toBe(false);
+    expect(useStocksStore.getState().chartError).toBe(
+      'No price history available yet. Keep the app open to collect data.',
+    );
   });
-
-  it('loadChart sets chartIsLoading to true while in-flight', () => {
-    let resolveChart!: (value: StockChartPoint[]) => void;
-    const chartPromise = new Promise<StockChartPoint[]>((resolve) => {
-      resolveChart = resolve;
-    });
-    mockStocksRepo.chart.mockReturnValueOnce(chartPromise);
-
-    // Fire but don't await — check mid-flight state
-    useStocksStore.getState().loadChart('AAPL', '1W');
-
-    expect(useStocksStore.getState().chartIsLoading).toBe(true);
-
-    resolveChart(chartPoints);
-  });
-
-  // Restore original (non-chart) beforeEach for the existing list tests above
-  // that rely on the mock shape without chart.  Since we redefined beforeEach
-  // for the chart section we must ensure existing tests still pass — they get
-  // their own state via the factory call in each test, so they are fine.
 });

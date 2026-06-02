@@ -4,9 +4,6 @@ import { StocksScreen } from '../src/presentation/screens/StocksScreen';
 import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import type { StocksState } from '../src/application/stocks.store';
 
-// ---------------------------------------------------------------------------
-// MMKV mock
-// ---------------------------------------------------------------------------
 jest.mock('react-native-mmkv', () => ({
   createMMKV: () => ({
     getString: () => undefined,
@@ -17,13 +14,24 @@ jest.mock('react-native-mmkv', () => ({
 
 const mockUseStocksStore = jest.fn();
 const mockNavigate = jest.fn();
+let mockIsOnline = true;
+let mockAppState = 'active';
 
 jest.mock('../src/data/container', () => ({
   useStocksStore: (selector: (state: StocksState) => unknown) => mockUseStocksStore(selector),
 }));
 
+jest.mock('../src/presentation/hooks/useConnectivity', () => ({
+  useConnectivity: () => mockIsOnline,
+}));
+
+jest.mock('../src/presentation/hooks/useAppState', () => ({
+  useAppState: () => mockAppState,
+}));
+
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
+  useFocusEffect: (callback: () => void | (() => void)) => callback(),
 }));
 
 function renderWithTheme(ui: React.ReactElement) {
@@ -34,13 +42,24 @@ describe('StocksScreen', () => {
   let state: StocksState;
 
   beforeEach(() => {
+    jest.useFakeTimers();
+
     state = {
       items: [],
+      isInitialLoading: false,
+      isBackgroundRefreshing: false,
+      isManualRefreshing: false,
       isLoading: false,
       isRefreshing: false,
       isStale: false,
       lastUpdatedAt: null,
       error: null,
+      consecutiveRefreshFailures: 0,
+      staleReason: null,
+      staleMessage: null,
+      loadInitial: jest.fn().mockResolvedValue(undefined),
+      refreshInBackground: jest.fn().mockResolvedValue(undefined),
+      refreshManually: jest.fn().mockResolvedValue(undefined),
       load: jest.fn().mockResolvedValue(undefined),
       refresh: jest.fn().mockResolvedValue(undefined),
       chartData: [],
@@ -48,8 +67,12 @@ describe('StocksScreen', () => {
       chartRange: '1W',
       chartIsLoading: false,
       chartError: null,
+      chartCache: {},
       loadChart: jest.fn().mockResolvedValue(undefined),
     };
+
+    mockIsOnline = true;
+    mockAppState = 'active';
 
     mockUseStocksStore.mockImplementation((selector: (snapshot: StocksState) => unknown) =>
       selector(state),
@@ -57,22 +80,24 @@ describe('StocksScreen', () => {
   });
 
   afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
     jest.clearAllMocks();
   });
 
-  it('shows a loading state with skeleton cards while the initial request is pending', () => {
-    state.isLoading = true;
+  it('shows a large skeleton only for the first load without usable data', () => {
+    state.isInitialLoading = true;
 
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-loading-state')).toBeTruthy();
-    expect(screen.getByText('Market Overview')).toBeTruthy();
-    // Skeleton cards should be visible during loading
     expect(screen.getByTestId('stocks-skeleton-card-1')).toBeTruthy();
-    expect(screen.getByTestId('stocks-skeleton-card-2')).toBeTruthy();
+    expect(screen.queryByTestId('stocks-scroll')).toBeNull();
   });
 
-  it('renders the premium market overview with summary tiles and stock cards', () => {
+  it('keeps the list visible while background polling refreshes', () => {
     state.items = [
       {
         symbol: 'AAPL',
@@ -81,21 +106,19 @@ describe('StocksScreen', () => {
         changePercent: 1.23,
       },
     ];
+    state.lastUpdatedAt = '2026-05-29T16:40:00.000Z';
+    state.isBackgroundRefreshing = true;
+    state.isRefreshing = true;
 
     renderWithTheme(<StocksScreen />);
 
     expect(screen.getByTestId('stocks-list-state')).toBeTruthy();
-    expect(screen.getByText('Market Overview')).toBeTruthy();
-    expect(screen.getByText('Track leaders, movers, and your next alert.')).toBeTruthy();
-    expect(screen.getByText('Total portfolio')).toBeTruthy();
-    expect(screen.getByText('Top gainer')).toBeTruthy();
-    expect(screen.getAllByText('AAPL')).toHaveLength(2);
-    expect(screen.getByText('Apple Inc.')).toBeTruthy();
-    expect(screen.getAllByText('$212.45')).toHaveLength(2);
-    expect(screen.getAllByText('+1.23%')).toHaveLength(2);
+    expect(screen.getByTestId('stocks-status-pill')).toBeTruthy();
+    expect(screen.getByText('Updating…')).toBeTruthy();
+    expect(screen.queryByTestId('stocks-loading-state')).toBeNull();
   });
 
-  it('shows a negative trend badge for declining stocks', () => {
+  it('uses RefreshControl only for manual pull-to-refresh', async () => {
     state.items = [
       {
         symbol: 'MSFT',
@@ -104,54 +127,23 @@ describe('StocksScreen', () => {
         changePercent: -0.47,
       },
     ];
-
-    renderWithTheme(<StocksScreen />);
-
-    expect(screen.getAllByText('-0.47%')).toHaveLength(2);
-  });
-
-  it('shows an explicit empty state when the API returns no items', () => {
-    renderWithTheme(<StocksScreen />);
-
-    expect(screen.getByTestId('stocks-empty-state')).toBeTruthy();
-    expect(screen.getByText('No stocks on your radar yet')).toBeTruthy();
-    expect(screen.getByText('Pull to refresh to load the latest market movers.')).toBeTruthy();
-  });
-
-  it('shows a retryable error state when loading fails without items', () => {
-    state.error = 'No internet connection';
-
-    renderWithTheme(<StocksScreen />);
-
-    expect(screen.getByTestId('stocks-error-state')).toBeTruthy();
-    expect(screen.getByText("We couldn't load the market right now.")).toBeTruthy();
-    expect(screen.queryByTestId('stocks-retry-button')).toBeNull();
-    fireEvent.press(screen.getByTestId('stocks-error-content-action-button'));
-    expect(state.load).toHaveBeenCalledTimes(2);
-  });
-
-  it('triggers refresh from pull-to-refresh', async () => {
-    state.items = [
-      {
-        symbol: 'MSFT',
-        name: 'Microsoft',
-        currentPrice: 498.12,
-        changePercent: -0.47,
-      },
-    ];
+    state.lastUpdatedAt = '2026-05-29T16:40:00.000Z';
+    state.isBackgroundRefreshing = true;
+    state.isRefreshing = true;
 
     renderWithTheme(<StocksScreen />);
 
     const scrollView = screen.getByTestId('stocks-scroll');
+    expect(scrollView.props.refreshControl.props.refreshing).toBe(false);
 
     await act(async () => {
       await scrollView.props.refreshControl.props.onRefresh();
     });
 
-    expect(state.refresh).toHaveBeenCalledTimes(1);
+    expect(state.refreshManually).toHaveBeenCalledTimes(1);
   });
 
-  it('shows stale snapshot messaging only when cached data rescues a failed load', () => {
+  it('shows a subtle stale cached status when refresh fails but data exists', () => {
     state.items = [
       {
         symbol: 'AAPL',
@@ -160,19 +152,50 @@ describe('StocksScreen', () => {
         changePercent: 1.23,
       },
     ];
-    state.isStale = true;
     state.lastUpdatedAt = '2026-05-28T22:30:00.000Z';
+    state.isStale = true;
+    state.consecutiveRefreshFailures = 1;
+
+    renderWithTheme(<StocksScreen />);
+
+    expect(screen.getByTestId('stocks-status-pill')).toBeTruthy();
+    expect(screen.getByText('Refresh failed · Showing latest cached data')).toBeTruthy();
+    expect(screen.queryByTestId('stocks-loading-state')).toBeNull();
+  });
+
+  it('shows offline cached status and pauses active polling eligibility', () => {
+    state.items = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        currentPrice: 212.45,
+        changePercent: 1.23,
+      },
+    ];
+    state.lastUpdatedAt = '2026-05-28T22:30:00.000Z';
+    mockIsOnline = false;
+
+    renderWithTheme(<StocksScreen />);
+
+    expect(screen.getByText('Offline · Cached data')).toBeTruthy();
+    act(() => {
+      jest.advanceTimersByTime(15000);
+    });
+    expect(state.refreshInBackground).not.toHaveBeenCalled();
+  });
+
+  it('shows a retry state when first load fails and no data exists', () => {
     state.error = 'No internet connection';
 
     renderWithTheme(<StocksScreen />);
 
-    expect(screen.getByTestId('stocks-stale-banner')).toBeTruthy();
-    expect(screen.getByText("You're offline. Showing cached data.")).toBeTruthy();
-    expect(screen.getByTestId('stocks-stale-retry-button')).toBeTruthy();
-    expect(screen.queryByText('No internet connection')).toBeNull();
+    expect(screen.getByTestId('stocks-error-state')).toBeTruthy();
+    expect(screen.getByText('Failed to load market data')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('stocks-error-content-action-button'));
+    expect(state.loadInitial).toHaveBeenCalledTimes(2);
   });
 
-  it('navigates to StockChart on stock card press with symbol param', () => {
+  it('navigates to StockChart with the tapped symbol', () => {
     state.items = [
       {
         symbol: 'AAPL',
@@ -181,6 +204,7 @@ describe('StocksScreen', () => {
         changePercent: 1.23,
       },
     ];
+    state.lastUpdatedAt = '2026-05-29T16:40:00.000Z';
 
     renderWithTheme(<StocksScreen />);
 

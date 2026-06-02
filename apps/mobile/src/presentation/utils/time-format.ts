@@ -13,3 +13,10 @@ export function formatRelativeTime(isoDate: string): string {
   if (diffDay < 7) return `${diffDay}d ago`;
   return date.toLocaleDateString();
 }
+
+export function formatTimeOnly(iso: string): string {
+  const d = new Date(iso);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}

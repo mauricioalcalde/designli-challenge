@@ -78,9 +78,16 @@ packages/
 ### Mobile screens
 
 - **Auth**: login / register
-- **Stocks**: authenticated stock list with pull-to-refresh, stale fallback
+- **Stocks**: authenticated stock list with controlled near real-time polling via the backend, pull-to-refresh, and cached/offline fallback
 - **Alerts**: CRUD: list, create with threshold/direction, delete
 - **Notifications**: push registration readiness
+
+### Market Data Notes
+
+- The mobile app polls the backend `GET /stocks` endpoint on a controlled interval while the Stocks screen is focused, the app is active, and the device is online. It does not open a websocket to Finnhub.
+- Pull-to-refresh is a manual mobile action only. Background polling is separate and keeps the current list visible instead of replacing it with a full-screen loader.
+- The backend alert evaluator scheduler is independent from mobile polling. Alert checks continue on the backend cadence and do not depend on the Stocks screen being open.
+- There is no backend quote-cache TTL implemented today in `FinnhubStockProvider`; it currently fetches Finnhub quotes directly per request. If a cache layer is added later, the expected architecture is a short backend TTL of about 10-15 seconds, with mobile still polling the backend only.
 
 ## Environment
 

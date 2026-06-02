@@ -1,11 +1,14 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStocksStore } from '../../data/container';
+import { useConnectivity } from '../hooks/useConnectivity';
+import { useAppState } from '../hooks/useAppState';
 import { EmptyState, ScreenContainer, Skeleton, StockItemCard } from '../components';
 import {
   MarketSearchBar,
+  MarketStatusPill,
   MarketSummaryCard,
   MarketTopBar,
   WatchlistHeader,
@@ -15,6 +18,7 @@ import { useTheme } from '../theme/useTheme';
 export type StocksStackParamList = {
   StocksList: undefined;
   StockChart: { symbol: string };
+  Inbox: undefined;
 };
 
 function formatCurrency(value: number): string {
@@ -26,51 +30,77 @@ function formatChange(value: number): string {
   return `${icon} ${Math.abs(value).toFixed(2)}%`;
 }
 
-function formatSnapshotTimestamp(value: string): string {
-  return new Date(value).toLocaleString();
-}
-
 export function StocksScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<StocksStackParamList>>();
   const [query, setQuery] = useState('');
   const items = useStocksStore((state) => state.items);
-  const isLoading = useStocksStore((state) => state.isLoading);
-  const isRefreshing = useStocksStore((state) => state.isRefreshing);
+  const isInitialLoading = useStocksStore((state) => state.isInitialLoading);
+  const isBackgroundRefreshing = useStocksStore((state) => state.isBackgroundRefreshing);
+  const isManualRefreshing = useStocksStore((state) => state.isManualRefreshing);
   const isStale = useStocksStore((state) => state.isStale);
   const lastUpdatedAt = useStocksStore((state) => state.lastUpdatedAt);
   const error = useStocksStore((state) => state.error);
-  const staleMessage = useStocksStore((state) => state.staleMessage);
-  const load = useStocksStore((state) => state.load);
-  const refresh = useStocksStore((state) => state.refresh);
+  const staleReason = useStocksStore((state) => state.staleReason);
+  const loadInitial = useStocksStore((state) => state.loadInitial);
+  const refreshInBackground = useStocksStore((state) => state.refreshInBackground);
+  const refreshManually = useStocksStore((state) => state.refreshManually);
   const { tokens } = useTheme();
+  const isOnline = useConnectivity();
+  const appState = useAppState();
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-
-      const sync = async () => {
-        if (!active) return;
-        const state = useStocksStore.getState();
-        if (state.items.length === 0) {
-          await load();
-          return;
-        }
-
-        await refresh();
-      };
-
-      void sync();
-
-      // Poll every 10s for near real-time updates (single source of truth: quotes)
-      const interval = setInterval(() => {
-        void sync();
-      }, 10000);
+      void loadInitial();
 
       return () => {
-        active = false;
-        clearInterval(interval);
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
       };
-    }, [load, refresh]),
+    }, [loadInitial]),
+  );
+
+  // Controlled polling: active only when focused, app in foreground, and online
+  useFocusEffect(
+    useCallback(() => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+
+      const isFocused = true;
+      const canPoll =
+        isFocused &&
+        isOnline &&
+        appState === 'active' &&
+        items.length > 0 &&
+        !isInitialLoading &&
+        !isBackgroundRefreshing &&
+        !isManualRefreshing;
+
+      if (canPoll) {
+        pollingRef.current = setInterval(() => {
+          void refreshInBackground();
+        }, 10000);
+      }
+
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      };
+    }, [
+      appState,
+      isBackgroundRefreshing,
+      isInitialLoading,
+      isManualRefreshing,
+      isOnline,
+      items.length,
+      refreshInBackground,
+    ]),
   );
 
   const filteredItems = useMemo(() => {
@@ -93,16 +123,17 @@ export function StocksScreen() {
     return items.reduce((best, item) => (item.changePercent > best.changePercent ? item : best));
   }, [items]);
 
-  const loadingState = isLoading && items.length === 0;
-  const hardErrorState = error && items.length === 0;
+  const showInitialLoader = isInitialLoading && items.length === 0;
+  const hardErrorState = !isInitialLoading && error && items.length === 0;
   const emptySearchState =
-    !loadingState && !hardErrorState && items.length > 0 && filteredItems.length === 0;
+    !showInitialLoader && !hardErrorState && items.length > 0 && filteredItems.length === 0;
+  const showBackgroundIndicator = isBackgroundRefreshing && items.length > 0;
 
   return (
     <ScreenContainer testID="stocks-screen">
-      {loadingState ? (
+      {showInitialLoader ? (
         <View style={styles.centered} testID="stocks-loading-state">
-          <MarketTopBar onRefresh={() => void refresh()} />
+          <MarketTopBar onRefresh={() => void refreshManually()} />
           <View style={styles.headerBlock}>
             <Text style={[styles.headerTitle, { color: tokens.colors.text.primary }]}>
               Market Overview
@@ -127,7 +158,7 @@ export function StocksScreen() {
         </View>
       ) : hardErrorState ? (
         <View style={styles.centered} testID="stocks-error-state">
-          <MarketTopBar onRefresh={() => void load()} />
+          <MarketTopBar onRefresh={() => void loadInitial()} />
           <View style={styles.headerBlock}>
             <Text style={[styles.headerTitle, { color: tokens.colors.text.primary }]}>
               Market Overview
@@ -139,7 +170,7 @@ export function StocksScreen() {
           <EmptyState
             title="Failed to load market data"
             message="Please try again."
-            action={{ label: 'Retry', onPress: () => void load() }}
+            action={{ label: 'Retry', onPress: () => void loadInitial() }}
             testID="stocks-error-content"
           />
         </View>
@@ -150,13 +181,13 @@ export function StocksScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => void refresh()}
+              refreshing={isManualRefreshing}
+              onRefresh={() => void refreshManually()}
               tintColor={tokens.colors.primary}
             />
           }
         >
-          <MarketTopBar onRefresh={() => void refresh()} />
+          <MarketTopBar onRefresh={() => void refreshManually()} />
 
           <View style={styles.headerBlock}>
             <Text style={[styles.headerTitle, { color: tokens.colors.text.primary }]}>
@@ -165,6 +196,15 @@ export function StocksScreen() {
             <Text style={[styles.headerSubtitle, { color: tokens.colors.text.secondary }]}>
               Track leaders, movers, and your next opportunity.
             </Text>
+            {items.length > 0 ? (
+              <MarketStatusPill
+                isBackgroundRefreshing={showBackgroundIndicator}
+                isStale={isStale}
+                isOffline={!isOnline}
+                lastUpdatedAt={lastUpdatedAt}
+                staleReason={staleReason ?? undefined}
+              />
+            ) : null}
           </View>
 
           {items.length > 0 ? (
@@ -196,26 +236,6 @@ export function StocksScreen() {
             onClear={() => setQuery('')}
             testID="stocks-search-bar"
           />
-
-          {isStale && lastUpdatedAt ? (
-            <View
-              style={[
-                styles.banner,
-                {
-                  backgroundColor: tokens.colors.bg.surface,
-                  borderColor: tokens.colors.border.subtle,
-                },
-              ]}
-              testID="stocks-stale-banner"
-            >
-              <Text style={[styles.bannerTitle, { color: tokens.colors.warning }]}>
-                {staleMessage ?? "You're offline. Showing cached data."}
-              </Text>
-              <Text style={[styles.bannerMeta, { color: tokens.colors.text.muted }]}>
-                Last sync {formatSnapshotTimestamp(lastUpdatedAt)}
-              </Text>
-            </View>
-          ) : null}
 
           <WatchlistHeader title="Watchlist" />
 
@@ -288,21 +308,6 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     gap: 12,
-  },
-  banner: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    gap: 8,
-  },
-  bannerTitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-  },
-  bannerMeta: {
-    fontSize: 12,
-    lineHeight: 16,
   },
   list: {
     gap: 12,

@@ -15,7 +15,10 @@ interface FeedbackStateProps {
   testID?: string;
 }
 
-function getFeedbackTone(type: FeedbackType): { label: string; variant: 'success' | 'error' | 'warning' | 'info' } {
+function getFeedbackTone(type: FeedbackType): {
+  label: string;
+  variant: 'success' | 'error' | 'warning' | 'info';
+} {
   switch (type) {
     case 'success':
       return { label: 'Saved', variant: 'success' };

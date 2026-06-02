@@ -22,6 +22,18 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
+const mockNavigation = { navigate: jest.fn() };
+const mockUseInboxStore = jest.fn();
+
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => mockNavigation,
+}));
+
+jest.mock('../src/application/inbox.store', () => ({
+  useInboxStore: (selector: (state: unknown) => unknown) => mockUseInboxStore(selector),
+  createInboxStore: jest.fn(),
+}));
+
 const mockUseConnectivity = jest.fn();
 
 jest.mock('../src/presentation/hooks/useConnectivity', () => ({
@@ -45,6 +57,8 @@ import { Banner } from '../src/presentation/components/Banner';
 import { FeedbackState } from '../src/presentation/components/FeedbackState';
 import { OfflineBanner } from '../src/presentation/components/OfflineBanner';
 import { SegmentedControl } from '../src/presentation/components/SegmentedControl';
+import { AlertsTopBar } from '../src/presentation/components/alerts/AlertsTopBar';
+import { MarketTopBar } from '../src/presentation/components/stocks/MarketTopBar';
 import { ThemeContext } from '../src/presentation/theme/ThemeProvider';
 import { ThemeProvider } from '../src/presentation/theme/ThemeProvider';
 import { darkTokens } from '../src/presentation/theme';
@@ -780,5 +794,105 @@ describe('SegmentedControl', () => {
 
     fireEvent.press(screen.getByTestId('segmented-option-above'));
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AlertsTopBar — bell badge
+// ---------------------------------------------------------------------------
+describe('AlertsTopBar — bell badge', () => {
+  beforeEach(() => {
+    mockNavigation.navigate.mockClear();
+    mockUseInboxStore.mockImplementation((selector: (state: { unreadCount: number }) => unknown) =>
+      selector({ unreadCount: 0 }),
+    );
+  });
+
+  it('renders notifications-outline bell icon (distinct from alerts tab)', () => {
+    renderWithTheme(<AlertsTopBar onRefresh={jest.fn()} />);
+
+    // Verify the bell icon is rendered with the correct name
+    const icon = screen.getByTestId('alerts-topbar-bell-icon');
+    expect(icon.props.name).toBe('notifications-outline');
+  });
+
+  it('navigates to Stocks > Inbox when bell is tapped', () => {
+    renderWithTheme(<AlertsTopBar onRefresh={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('alerts-topbar-notifications'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Stocks', {
+      screen: 'Inbox',
+    });
+  });
+
+  it('shows unread count badge when unreadCount > 0', () => {
+    mockUseInboxStore.mockImplementation((selector: (state: { unreadCount: number }) => unknown) =>
+      selector({ unreadCount: 3 }),
+    );
+
+    renderWithTheme(<AlertsTopBar onRefresh={jest.fn()} />);
+
+    expect(screen.getByTestId('alerts-topbar-badge')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
+  });
+
+  it('hides badge when unreadCount is 0', () => {
+    mockUseInboxStore.mockImplementation((selector: (state: { unreadCount: number }) => unknown) =>
+      selector({ unreadCount: 0 }),
+    );
+
+    renderWithTheme(<AlertsTopBar onRefresh={jest.fn()} />);
+
+    expect(screen.queryByTestId('alerts-topbar-badge')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MarketTopBar — bell badge
+// ---------------------------------------------------------------------------
+describe('MarketTopBar — bell badge', () => {
+  beforeEach(() => {
+    mockNavigation.navigate.mockClear();
+    mockUseInboxStore.mockImplementation((selector: (state: { unreadCount: number }) => unknown) =>
+      selector({ unreadCount: 0 }),
+    );
+  });
+
+  it('renders notifications-outline bell icon (distinct from alerts tab)', () => {
+    renderWithTheme(<MarketTopBar onRefresh={jest.fn()} />);
+
+    // Verify the bell icon is rendered with the correct name
+    const icon = screen.getByTestId('stocks-topbar-bell-icon');
+    expect(icon.props.name).toBe('notifications-outline');
+  });
+
+  it('navigates to Inbox when bell is tapped', () => {
+    renderWithTheme(<MarketTopBar onRefresh={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('stocks-topbar-notifications'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Inbox');
+  });
+
+  it('shows unread count badge when unreadCount > 0', () => {
+    mockUseInboxStore.mockImplementation((selector: (state: { unreadCount: number }) => unknown) =>
+      selector({ unreadCount: 5 }),
+    );
+
+    renderWithTheme(<MarketTopBar onRefresh={jest.fn()} />);
+
+    expect(screen.getByTestId('stocks-topbar-badge')).toBeTruthy();
+    expect(screen.getByText('5')).toBeTruthy();
+  });
+
+  it('hides badge when unreadCount is 0', () => {
+    mockUseInboxStore.mockImplementation((selector: (state: { unreadCount: number }) => unknown) =>
+      selector({ unreadCount: 0 }),
+    );
+
+    renderWithTheme(<MarketTopBar onRefresh={jest.fn()} />);
+
+    expect(screen.queryByTestId('stocks-topbar-badge')).toBeNull();
   });
 });

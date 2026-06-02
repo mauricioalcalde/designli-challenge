@@ -4,4 +4,9 @@
 export type { RegisterDTO, LoginDTO, AuthResponse, JwtPayload } from './auth';
 export type { StockListing, StockChartPoint, ChartRange, StockProviderConfig } from './stock';
 export type { CreateAlertDTO, AlertResponse, AlertDirection, AlertStatus } from './alert';
-export type { DeviceTokenDTO, DeviceStatusResponse, AlertNotificationPayload, NotificationResult } from './notification';
+export type {
+  DeviceTokenDTO,
+  DeviceStatusResponse,
+  AlertNotificationPayload,
+  NotificationResult,
+} from './notification';

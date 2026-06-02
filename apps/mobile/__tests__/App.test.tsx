@@ -60,10 +60,17 @@ const mockStocksState: StocksState = {
     },
   ],
   isLoading: false,
+  isInitialLoading: false,
+  isBackgroundRefreshing: false,
+  isManualRefreshing: false,
   isRefreshing: false,
   isStale: false,
   lastUpdatedAt: null,
   error: null,
+  consecutiveRefreshFailures: 0,
+  loadInitial: jest.fn().mockResolvedValue(undefined),
+  refreshInBackground: jest.fn().mockResolvedValue(undefined),
+  refreshManually: jest.fn().mockResolvedValue(undefined),
   load: jest.fn().mockResolvedValue(undefined),
   refresh: jest.fn().mockResolvedValue(undefined),
   chartData: [],
@@ -144,6 +151,7 @@ jest.mock('@react-navigation/native', () => {
     NavigationContext,
     useNavigation: () => React.useContext(NavigationContext),
     useRoute: () => ({ params: { symbol: 'AAPL' } }),
+    useFocusEffect: () => {},
   };
 });
 
