@@ -15,18 +15,13 @@ import { Platform } from 'react-native';
 // Production URL takes precedence if set
 const PRODUCTION_URL = process.env.EXPO_PUBLIC_API_URL;
 
-if (PRODUCTION_URL) {
-  export const API_BASE_URL = PRODUCTION_URL;
-} else {
-  // Development fallback
-  const DEV_HOST = Platform.select({
-    android: '10.0.2.2',
-    ios: 'localhost',
-    default: 'localhost',
-  });
+const DEV_HOST = Platform.select({
+  android: '10.0.2.2',
+  ios: 'localhost',
+  default: 'localhost',
+});
 
-  const API_PORT = process.env.EXPO_PUBLIC_API_PORT ?? '3000';
-  const API_HOST = process.env.EXPO_PUBLIC_API_HOST ?? DEV_HOST;
+const API_PORT = process.env.EXPO_PUBLIC_API_PORT ?? '3000';
+const API_HOST = process.env.EXPO_PUBLIC_API_HOST ?? DEV_HOST;
 
-  export const API_BASE_URL = `http://${API_HOST}:${API_PORT}`;
-}
+export const API_BASE_URL = PRODUCTION_URL ?? `http://${API_HOST}:${API_PORT}`;
