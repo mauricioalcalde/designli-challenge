@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     buildCommand: npm install -g pnpm@9.15.4 && pnpm install && pnpm --filter @designli-challenge/shared build && pnpm --filter @designli-challenge/api prisma:generate && pnpm --filter @designli-challenge/api prisma:migrate:deploy && pnpm --filter @designli-challenge/api build
-    startCommand: cd apps/api && pnpm start:prod
+    startCommand: cd apps/api && node dist/src/main
     envVars:
       - key: NODE_VERSION
         value: '20.18.0'
