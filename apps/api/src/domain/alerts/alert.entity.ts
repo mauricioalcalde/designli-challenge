@@ -8,6 +8,7 @@ export class Alert {
     public readonly direction: 'above' | 'below',
     public readonly active: boolean,
     public readonly lastTriggeredAt: Date | null,
+    public readonly lastNotifiedDirection: 'above' | 'below' | null,
     public readonly createdAt: Date,
   ) {}
 }

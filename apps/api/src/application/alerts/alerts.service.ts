@@ -33,7 +33,8 @@ export class AlertsService {
       dto.threshold,
       dto.direction,
       true,
-      null,
+      null, // lastTriggeredAt
+      null, // lastNotifiedDirection
       new Date(),
     );
 

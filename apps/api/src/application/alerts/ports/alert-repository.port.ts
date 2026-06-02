@@ -8,4 +8,5 @@ export abstract class IAlertRepository {
   abstract findById(id: number): Promise<Alert | null>;
   abstract delete(id: number): Promise<void>;
   abstract updateLastTriggered(id: number, lastTriggeredAt: Date): Promise<void>;
+  abstract updateLastNotifiedDirection(id: number, direction: string | null): Promise<void>;
 }

@@ -7,7 +7,20 @@ import { IDeviceTokenRepository } from '../notifications/ports/device-token-repo
 import { Alert } from '../../domain/alerts/alert.entity';
 import { StockListing, AlertNotificationPayload } from '@designli-challenge/shared';
 
-function makeAlert(overrides?: Partial<Alert>): Alert {
+// Augmented Partial to accept lastNotifiedDirection in overrides for new tests.
+// We keep the positional constructor for clarity but allow setting the new field.
+function makeAlert(overrides?: {
+  id?: number;
+  clientRequestId?: string;
+  userId?: number;
+  symbol?: string;
+  threshold?: number;
+  direction?: 'above' | 'below';
+  active?: boolean;
+  lastTriggeredAt?: Date | null;
+  lastNotifiedDirection?: 'above' | 'below' | null;
+  createdAt?: Date;
+}): Alert {
   return new Alert(
     overrides?.id ?? 1,
     overrides?.clientRequestId ?? 'req-1',
@@ -17,6 +30,7 @@ function makeAlert(overrides?: Partial<Alert>): Alert {
     overrides?.direction ?? 'above',
     overrides?.active ?? true,
     overrides?.lastTriggeredAt ?? null,
+    overrides?.lastNotifiedDirection ?? null,
     overrides?.createdAt ?? new Date('2024-01-01'),
   );
 }
@@ -42,6 +56,7 @@ describe('AlertEvaluatorService', () => {
       findById: vi.fn(),
       delete: vi.fn(),
       updateLastTriggered: vi.fn(),
+      updateLastNotifiedDirection: vi.fn(),
     } as unknown as IAlertRepository;
 
     stockProvider = {
@@ -138,6 +153,158 @@ describe('AlertEvaluatorService', () => {
 
       expect(notificationSender.send).toHaveBeenCalledTimes(1);
       expect(alertRepo.updateLastTriggered).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('state-transition dedup', () => {
+    // ── Scenario 1: First-fire always triggers ──────────────────────────
+    it('should fire and set direction on first evaluation (lastNotifiedDirection is null)', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'above',
+        threshold: 180,
+        lastNotifiedDirection: null,
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: true, status: 'sent' });
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).toHaveBeenCalledTimes(1);
+      expect(alertRepo.updateLastNotifiedDirection).toHaveBeenCalledWith(1, 'above');
+    });
+
+    // ── Scenario 2: No-repeat fire while condition persists ─────────────
+    it('should NOT fire when lastNotifiedDirection matches the alert direction (already notified)', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'above',
+        threshold: 180,
+        lastNotifiedDirection: 'above',
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).not.toHaveBeenCalled();
+      expect(alertRepo.updateLastNotifiedDirection).not.toHaveBeenCalled();
+    });
+
+    it('should NOT fire below alert when lastNotifiedDirection is already below', async () => {
+      const alert = makeAlert({
+        symbol: 'GOOGL',
+        direction: 'below',
+        threshold: 135,
+        lastNotifiedDirection: 'below',
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).not.toHaveBeenCalled();
+    });
+
+    // ── Scenario 3: Reset on reverse crossing ───────────────────────────
+    it('should reset lastNotifiedDirection to null when price crosses back (above → below threshold)', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'above',
+        threshold: 200, // price 185 is below this threshold → reverse cross
+        lastNotifiedDirection: 'above',
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+
+      await evaluator.evaluateAll();
+
+      // Should reset to null because price no longer crosses in the 'above' direction
+      expect(alertRepo.updateLastNotifiedDirection).toHaveBeenCalledWith(1, null);
+      expect(notificationSender.send).not.toHaveBeenCalled();
+    });
+
+    it('should reset lastNotifiedDirection to null when price crosses back (below → above threshold)', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'below',
+        threshold: 150, // price 185 is above this threshold → reverse cross
+        lastNotifiedDirection: 'below',
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+
+      await evaluator.evaluateAll();
+
+      expect(alertRepo.updateLastNotifiedDirection).toHaveBeenCalledWith(1, null);
+      expect(notificationSender.send).not.toHaveBeenCalled();
+    });
+
+    // ── Scenario 4: Re-fire after reset and re-crossing ─────────────────
+    it('should re-fire after reset when price crosses again', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'above',
+        threshold: 180,
+        lastNotifiedDirection: null, // was reset
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: true, status: 'sent' });
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).toHaveBeenCalledTimes(1);
+      expect(alertRepo.updateLastNotifiedDirection).toHaveBeenCalledWith(1, 'above');
+    });
+
+    // ── Cooldown interaction: state-transition passes but cooldown blocks ──
+    it('should NOT fire when state-transition allows but cooldown is still active', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'above',
+        threshold: 180,
+        lastNotifiedDirection: null, // would normally fire
+        lastTriggeredAt: new Date(Date.now() - 2 * 60 * 1000), // 2 min ago → within 5-min cooldown
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).not.toHaveBeenCalled();
+      expect(alertRepo.updateLastNotifiedDirection).not.toHaveBeenCalled();
+    });
+
+    // ── Existing alert without lastNotifiedDirection set (backward compat) ──
+    it('should fire for existing alert with lastNotifiedDirection: null (backward compat)', async () => {
+      const alert = makeAlert({
+        symbol: 'AAPL',
+        direction: 'above',
+        threshold: 180,
+        lastNotifiedDirection: null,
+        lastTriggeredAt: new Date(Date.now() - 10 * 60 * 1000), // outside cooldown
+      });
+
+      vi.mocked(stockProvider.list).mockResolvedValue(testStocks);
+      vi.mocked(alertRepo.findAllActive).mockResolvedValue([alert]);
+      vi.mocked(deviceTokenRepository.findByUser).mockResolvedValue(['token-a']);
+      vi.mocked(notificationSender.send).mockResolvedValue({ success: true, status: 'sent' });
+
+      await evaluator.evaluateAll();
+
+      expect(notificationSender.send).toHaveBeenCalledTimes(1);
+      expect(alertRepo.updateLastNotifiedDirection).toHaveBeenCalledWith(1, 'above');
     });
   });
 

@@ -72,6 +72,18 @@ export class AlertEvaluatorService {
 
     if (!this.isThresholdCrossed(alert.direction, currentPrice, alert.threshold)) {
       this.logger.log(`Threshold not crossed for alert #${alert.id}`);
+
+      // ── Reverse-cross reset: if the alert had fired before but price
+      //    no longer crosses the threshold in the alert's direction,
+      //    reset lastNotifiedDirection to null so it can fire again later.
+      if (alert.lastNotifiedDirection !== null) {
+        // lastNotifiedDirection is always set to the alert's direction on fire,
+        // so if threshold is no longer crossed, we reset.
+        this.logger.log(
+          `Alert #${alert.id}: price no longer crosses threshold — resetting lastNotifiedDirection to null`,
+        );
+        await this.alertRepository.updateLastNotifiedDirection(alert.id, null);
+      }
       return;
     }
 
@@ -80,7 +92,20 @@ export class AlertEvaluatorService {
     const now = Date.now();
     const cooldownMs = this.getCooldownMs();
 
-    // Cooldown check: skip if triggered within the window
+    // ── State-transition dedup (primary guard) ─────────────────────────
+    // Fire only when lastNotifiedDirection differs from the alert's
+    // configured direction AND price crosses the threshold.
+    const lastDir = alert.lastNotifiedDirection;
+
+    if (lastDir === alert.direction) {
+      // Already notified for this direction — skip.
+      this.logger.log(
+        `Alert #${alert.id} already notified for direction '${alert.direction}' — skipping`,
+      );
+      return;
+    }
+
+    // ── Cooldown check (secondary guard — dampens oscillation noise) ──
     if (alert.lastTriggeredAt) {
       const elapsed = now - alert.lastTriggeredAt.getTime();
       if (elapsed < cooldownMs) {
@@ -124,7 +149,8 @@ export class AlertEvaluatorService {
 
     this.logger.log(`✓ Notification sent successfully for alert #${alert.id}`);
     await this.alertRepository.updateLastTriggered(alert.id, new Date(now));
-    this.logger.log(`✓ Updated lastTriggeredAt for alert #${alert.id}`);
+    await this.alertRepository.updateLastNotifiedDirection(alert.id, alert.direction);
+    this.logger.log(`✓ Updated lastTriggeredAt and lastNotifiedDirection for alert #${alert.id}`);
   }
 
   private isThresholdCrossed(

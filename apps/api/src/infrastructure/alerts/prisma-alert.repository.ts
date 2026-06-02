@@ -17,6 +17,7 @@ export class PrismaAlertRepository implements IAlertRepository {
         direction: alert.direction,
         active: alert.active,
         lastTriggeredAt: alert.lastTriggeredAt,
+        lastNotifiedDirection: alert.lastNotifiedDirection,
       },
     });
     return this.toDomain(record);
@@ -60,6 +61,13 @@ export class PrismaAlertRepository implements IAlertRepository {
     });
   }
 
+  async updateLastNotifiedDirection(id: number, direction: string | null): Promise<void> {
+    await this.prisma.alert.update({
+      where: { id },
+      data: { lastNotifiedDirection: direction },
+    });
+  }
+
   private toDomain(record: {
     id: number;
     clientRequestId: string;
@@ -69,6 +77,7 @@ export class PrismaAlertRepository implements IAlertRepository {
     direction: string;
     active: boolean;
     lastTriggeredAt: Date | null;
+    lastNotifiedDirection: string | null;
     createdAt: Date;
   }): Alert {
     return new Alert(
@@ -80,6 +89,7 @@ export class PrismaAlertRepository implements IAlertRepository {
       record.direction as 'above' | 'below',
       record.active,
       record.lastTriggeredAt,
+      record.lastNotifiedDirection as 'above' | 'below' | null,
       record.createdAt,
     );
   }

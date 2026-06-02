@@ -15,6 +15,7 @@ function makeAlert(overrides?: Partial<Alert>): Alert {
     overrides?.direction ?? 'above',
     overrides?.active ?? true,
     overrides?.lastTriggeredAt ?? null,
+    overrides?.lastNotifiedDirection ?? null,
     overrides?.createdAt ?? new Date('2024-01-01'),
   );
 }
@@ -33,6 +34,7 @@ describe('AlertsService', () => {
       findById: vi.fn(),
       delete: vi.fn(),
       updateLastTriggered: vi.fn(),
+      updateLastNotifiedDirection: vi.fn(),
     } as unknown as IAlertRepository;
 
     alertEvaluator = {
@@ -81,6 +83,7 @@ describe('AlertsService', () => {
           alert.direction,
           alert.active,
           alert.lastTriggeredAt,
+          alert.lastNotifiedDirection,
           alert.createdAt,
         );
       });
