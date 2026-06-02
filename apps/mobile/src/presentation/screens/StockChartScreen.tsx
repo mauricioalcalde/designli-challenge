@@ -1,64 +1,178 @@
-import { useEffect, useMemo } from 'react';
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-gifted-charts';
 import type { ChartRange, StockChartPoint } from '@designli-challenge/shared';
-import { useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useStocksStore } from '../../data/container';
-import { Button } from '../components/Button';
+import { Button, ChartCard, EmptyState, ScreenContainer, Skeleton } from '../components';
+import {
+  CurrentPriceCard,
+  RangeStatsRow,
+  StockIdentityHeader,
+  TimeRangeSelector,
+} from '../components/stocks';
 import { useTheme } from '../theme/useTheme';
 
 const TIMEFRAMES: ChartRange[] = ['1D', '1W', '1M', '3M', '1Y'];
 
 function formatAxisLabel(epoch: number): string {
-  const d = new Date(epoch);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  const date = new Date(epoch);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function formatPriceLabel(value: number): string {
-  return `$${value.toFixed(0)}`;
+function formatPriceLabel(label: string): string {
+  const value = Number(label);
+  return Number.isNaN(value) ? label : `$${value.toFixed(0)}`;
+}
+
+function isNetworkLikeChartError(message: string | null): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes("don't have access") ||
+    normalized.includes('403') ||
+    normalized.includes('forbidden')
+  ) {
+    return false;
+  }
+  return (
+    normalized.includes('network') ||
+    normalized.includes('timeout') ||
+    normalized.includes('failed to fetch chart') ||
+    normalized.includes('unable to load chart') ||
+    normalized.includes('no response')
+  );
+}
+
+function isAccessDeniedChartError(message: string | null): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("don't have access") ||
+    normalized.includes('403') ||
+    normalized.includes('forbidden')
+  );
+}
+
+export function calculateYAxisRange(chartData: StockChartPoint[]): { min: number; max: number } {
+  if (chartData.length === 0) {
+    return { min: 0, max: 0 };
+  }
+
+  const lows = chartData.map((p) => p.low);
+  const highs = chartData.map((p) => p.high);
+  const min = Math.min(...lows);
+  const max = Math.max(...highs);
+  const range = max - min;
+
+  if (range === 0) {
+    // Single flat line — add 1% padding for visibility
+    const padding = max * 0.01 || 1;
+    return { min: min - padding, max: max + padding };
+  }
+
+  const padding = range * 0.05;
+  return { min: min - padding, max: max + padding };
 }
 
 export function StockChartScreen() {
-  const route = useRoute<{
-    key: string;
-    name: string;
-    params: { symbol: string };
-  }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<{ key: string; name: string; params: { symbol: string } }>();
   const symbol = route.params.symbol;
-
+  const items = useStocksStore((state) => state.items);
   const chartData = useStocksStore((state) => state.chartData);
   const chartRange = useStocksStore((state) => state.chartRange);
   const chartIsLoading = useStocksStore((state) => state.chartIsLoading);
   const chartError = useStocksStore((state) => state.chartError);
   const loadChart = useStocksStore((state) => state.loadChart);
-
+  const refreshStocks = useStocksStore((state) => state.refresh);
   const { tokens } = useTheme();
 
-  useEffect(() => {
-    void loadChart(symbol, '1W');
-  }, [symbol, loadChart]);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
 
-  const handleTimeframePress = (range: ChartRange) => {
-    void loadChart(symbol, range);
-  };
+      const sync = async () => {
+        await refreshStocks();
+        if (active) {
+          await loadChart(symbol, useStocksStore.getState().chartRange);
+        }
+      };
 
-  const handleRetry = () => {
-    void loadChart(symbol, chartRange);
-  };
+      void sync();
 
-  const handleRefresh = () => {
-    void loadChart(symbol, chartRange);
-  };
+      const interval = setInterval(() => {
+        void sync();
+      }, 30000);
 
-  const isLoading = chartIsLoading && chartData.length === 0;
+      return () => {
+        active = false;
+        clearInterval(interval);
+      };
+    }, [refreshStocks, loadChart, symbol]),
+  );
+
+  const stock = items.find((item) => item.symbol === symbol);
+  const currentPrice = stock?.currentPrice ?? chartData[chartData.length - 1]?.close ?? 0;
+  const companyName = stock?.name ?? `${symbol} price history`;
+  const hasCachedQuote = Boolean(stock);
+  const isLoadingState = chartIsLoading && chartData.length === 0;
+  const shouldShowOfflineBanner = Boolean(
+    chartError && hasCachedQuote && isNetworkLikeChartError(chartError),
+  );
+  const shouldShowProviderBanner = Boolean(
+    chartError &&
+    !shouldShowOfflineBanner &&
+    (isAccessDeniedChartError(chartError) || chartError.toLowerCase().includes('server error')),
+  );
+  const hasCachedChartData = chartData.length > 0;
+
+  const rangeStats = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const open = chartData[0].open;
+    const highs = chartData.map((point) => point.high);
+    const lows = chartData.map((point) => point.low);
+    return {
+      open,
+      high: Math.max(...highs),
+      low: Math.min(...lows),
+    };
+  }, [chartData]);
+
+  const periodChange = useMemo(() => {
+    if (chartData.length === 0) {
+      return {
+        value: stock?.changePercent ? (currentPrice * stock.changePercent) / 100 : 0,
+        percent: stock?.changePercent ?? 0,
+      };
+    }
+
+    const start = chartData[0].open;
+    const end = chartData[chartData.length - 1].close;
+    const value = end - start;
+    const percent = start === 0 ? 0 : (value / start) * 100;
+    return { value, percent };
+  }, [chartData, currentPrice, stock?.changePercent]);
+
+  const periodLabel = useMemo(() => {
+    switch (chartRange) {
+      case '1D':
+        return 'today';
+      case '1W':
+        return 'this week';
+      case '1M':
+        return 'this month';
+      case '3M':
+        return '3 months';
+      case '1Y':
+        return 'this year';
+      default:
+        return 'selected range';
+    }
+  }, [chartRange]);
+
+  const changeLabel = `${periodChange.percent >= 0 ? '▲' : '▼'} ${Math.abs(periodChange.percent).toFixed(2)}% (${periodChange.value >= 0 ? '+' : '-'}${Math.abs(periodChange.value).toFixed(2)}) ${periodLabel}`;
 
   const lineData = useMemo(
     () =>
@@ -69,144 +183,222 @@ export function StockChartScreen() {
     [chartData],
   );
 
+  const yAxisRange = useMemo(() => calculateYAxisRange(chartData), [chartData]);
+
+  const refreshChart = () => {
+    void refreshStocks();
+    void loadChart(symbol, chartRange);
+  };
+
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        {
-          backgroundColor: tokens.colors.background,
-          padding: tokens.spacing.md,
-        },
-      ]}
-      testID="stock-chart-screen"
-      refreshControl={
-        <RefreshControl
-          refreshing={chartIsLoading}
-          onRefresh={handleRefresh}
-          testID="chart-refresh-control"
+    <ScreenContainer testID="stock-chart-screen">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={chartIsLoading}
+            onRefresh={refreshChart}
+            tintColor={tokens.colors.primary}
+          />
+        }
+      >
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            testID="stock-chart-back-button"
+          >
+            <Ionicons name="arrow-back" size={24} color={tokens.colors.text.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={refreshChart}
+            activeOpacity={0.7}
+            testID="stock-chart-top-refresh-button"
+          >
+            <Ionicons name="refresh-outline" size={22} color={tokens.colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+
+        <StockIdentityHeader symbol={symbol} name={companyName} />
+
+        <CurrentPriceCard
+          price={currentPrice}
+          changeLabel={changeLabel}
+          isPositive={periodChange.percent >= 0}
         />
-      }
-    >
-      <View style={styles.header} testID="stock-chart-symbol-header">
-        <Text
-          style={[
-            styles.symbol,
-            {
-              color: tokens.colors.text,
-              fontSize: tokens.typography.h3.fontSize,
-              fontWeight: tokens.typography.h3.fontWeight,
-            },
-          ]}
-        >
-          {symbol}
-        </Text>
-      </View>
 
-      <View style={styles.timeframeRow}>
-        {TIMEFRAMES.map((tf) => {
-          const isActive = tf === chartRange;
-          return (
-            <TouchableOpacity
-              key={tf}
-              testID={`chart-timeframe-${tf}`}
-              style={[
-                styles.timeframePill,
-                {
-                  backgroundColor: isActive ? tokens.colors.primary : tokens.colors.surface,
-                  borderColor: isActive ? tokens.colors.primary : tokens.colors.border,
-                },
-              ]}
-              onPress={() => handleTimeframePress(tf)}
-              disabled={chartIsLoading}
-            >
-              <Text
-                style={[
-                  styles.timeframeText,
-                  {
-                    color: isActive ? '#FFFFFF' : tokens.colors.textSecondary,
-                    fontSize: tokens.typography.caption.fontSize,
-                    fontWeight: '600',
-                  },
-                ]}
-              >
-                {tf}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        <TimeRangeSelector
+          value={chartRange}
+          options={TIMEFRAMES}
+          onChange={(range) => void loadChart(symbol, range)}
+        />
 
-      {isLoading ? (
-        <View style={styles.centered} testID="stock-chart-loading">
-          <ActivityIndicator size="large" color={tokens.colors.primary} />
-          <Text style={[styles.helperText, { color: tokens.colors.textSecondary }]}>
-            Loading chart...
-          </Text>
-        </View>
-      ) : chartError && chartData.length === 0 ? (
-        <View style={styles.centered} testID="stock-chart-error">
-          <Text style={[styles.errorText, { color: tokens.colors.error }]}>{chartError}</Text>
+        {shouldShowOfflineBanner ? (
+          <View
+            style={[
+              styles.banner,
+              {
+                backgroundColor: tokens.colors.bg.surface,
+                borderColor: tokens.colors.border.subtle,
+              },
+            ]}
+            testID="stock-chart-offline-banner"
+          >
+            <Text style={[styles.bannerTitle, { color: tokens.colors.warning }]}>
+              You’re offline. Showing cached market data.
+            </Text>
+          </View>
+        ) : null}
+
+        {!shouldShowOfflineBanner && shouldShowProviderBanner && hasCachedChartData ? (
+          <View
+            style={[
+              styles.banner,
+              {
+                backgroundColor: tokens.colors.bg.surface,
+                borderColor: tokens.colors.border.subtle,
+              },
+            ]}
+            testID="stock-chart-provider-banner"
+          >
+            <Text style={[styles.bannerTitle, { color: tokens.colors.info }]}>
+              Historical chart unavailable from provider. Showing recent live price snapshots.
+            </Text>
+          </View>
+        ) : null}
+
+        {isLoadingState ? (
+          <View style={styles.centered} testID="stock-chart-loading">
+            <Skeleton.Card height={120} testID="stock-chart-skeleton-price" />
+            <Skeleton.Card height={280} testID="stock-chart-skeleton-chart" />
+          </View>
+        ) : chartError && chartData.length === 0 && !hasCachedQuote ? (
+          <View style={styles.centered} testID="stock-chart-error">
+            <EmptyState
+              title="Failed to load data"
+              message="Please try again."
+              action={{ label: 'Retry', onPress: refreshChart }}
+              testID="stock-chart-error-content"
+            />
+          </View>
+        ) : chartError && chartData.length === 0 ? (
+          <View style={styles.centered} testID="stock-chart-empty-with-quote">
+            <EmptyState
+              title={
+                shouldShowOfflineBanner
+                  ? 'No cached chart available'
+                  : shouldShowProviderBanner
+                    ? 'Building live chart history'
+                    : 'No data available'
+              }
+              message={
+                shouldShowOfflineBanner
+                  ? 'Reconnect and try again to load this time range.'
+                  : shouldShowProviderBanner
+                    ? 'Keep the app open a bit longer so we can collect enough live price points.'
+                    : 'Try another time range.'
+              }
+              testID="stock-chart-empty-content"
+            />
+          </View>
+        ) : chartData.length === 0 ? (
+          <View style={styles.centered} testID="stock-chart-empty">
+            <EmptyState
+              title="No data available"
+              message="Try another time range."
+              testID="stock-chart-empty-content"
+            />
+          </View>
+        ) : (
+          <ChartCard
+            title="Performance"
+            subtitle={`${symbol} · ${chartRange}`}
+            testID="stock-chart-area"
+          >
+            <LineChart
+              data={lineData}
+              color={tokens.colors.chart.primary}
+              thickness={3}
+              startFillColor={tokens.colors.chart.primary}
+              endFillColor="transparent"
+              startOpacity={0.28}
+              endOpacity={0.02}
+              spacing={40}
+              areaChart
+              curved
+              height={240}
+              hideDataPoints
+              backgroundColor={tokens.colors.bg.elevated}
+              yAxisColor={tokens.colors.chart.grid}
+              xAxisColor={tokens.colors.chart.grid}
+              rulesColor={tokens.colors.chart.grid}
+              showVerticalLines
+              verticalLinesColor={tokens.colors.chart.grid}
+              yAxisTextStyle={{ color: tokens.colors.chart.label, fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: tokens.colors.chart.label, fontSize: 10 }}
+              formatYLabel={formatPriceLabel}
+              noOfSections={4}
+              yAxisMinValue={yAxisRange.min}
+              yAxisMaxValue={yAxisRange.max}
+            />
+            {rangeStats ? (
+              <RangeStatsRow open={rangeStats.open} high={rangeStats.high} low={rangeStats.low} />
+            ) : null}
+          </ChartCard>
+        )}
+
+        <View style={styles.actionColumn}>
           <Button
-            title="Retry"
-            onPress={handleRetry}
-            variant="primary"
-            testID="stock-chart-retry-button"
+            title="Create Alert"
+            onPress={() =>
+              navigation.navigate('Alerts', {
+                screen: 'CreateAlert',
+                params: { symbol, currentPrice },
+              })
+            }
+            testID="stock-chart-create-alert-button"
+          />
+          <Button
+            title="Refresh"
+            variant="secondary"
+            onPress={refreshChart}
+            testID="stock-chart-refresh-button"
           />
         </View>
-      ) : chartData.length === 0 ? (
-        <View style={styles.centered} testID="stock-chart-empty">
-          <Text style={[styles.emptyText, { color: tokens.colors.textSecondary }]}>
-            No chart data available
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.chartContainer} testID="stock-chart-area">
-          <LineChart
-            data={lineData}
-            color={tokens.colors.chartLine}
-            thickness={2}
-            startFillColor={tokens.colors.chartFill}
-            endFillColor="transparent"
-            startOpacity={0.3}
-            endOpacity={0}
-            spacing={40}
-            backgroundColor={tokens.colors.background}
-            yAxisColor={tokens.colors.border}
-            xAxisColor={tokens.colors.border}
-            yAxisTextStyle={{ color: tokens.colors.textSecondary, fontSize: 10 }}
-            xAxisLabelTextStyle={{ color: tokens.colors.textSecondary, fontSize: 10 }}
-            formatYLabel={formatPriceLabel}
-            hideDataPoints
-            curved
-            height={250}
-          />
-        </View>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1 },
-  header: { marginBottom: 12 },
-  symbol: {},
-  timeframeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  timeframePill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 120,
+    gap: 20,
   },
-  timeframeText: {},
-  chartContainer: { marginTop: 8 },
-  centered: {
-    flex: 1,
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    minHeight: 300,
+    justifyContent: 'space-between',
   },
-  helperText: { marginTop: 12, textAlign: 'center' },
-  errorText: { textAlign: 'center', marginBottom: 16 },
-  emptyText: { textAlign: 'center' },
+  actionColumn: {
+    gap: 12,
+  },
+  banner: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+  },
+  bannerTitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
+  centered: {
+    minHeight: 280,
+    justifyContent: 'center',
+    gap: 16,
+  },
 });

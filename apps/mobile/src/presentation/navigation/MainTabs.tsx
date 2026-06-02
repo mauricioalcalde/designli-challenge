@@ -1,17 +1,33 @@
+import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AlertsScreen } from '../screens/AlertsScreen';
-import { NotificationsSettingsScreen } from '../screens/NotificationsSettingsScreen';
 import { StocksScreen } from '../screens/StocksScreen';
-import { StockChartScreen } from '../screens/StockChartScreen';
+import { useTheme } from '../theme/useTheme';
+import { AlertsStack } from './AlertsStack';
+import { ProfileStack } from './ProfileStack';
 import type { StocksStackParamList } from '../screens/StocksScreen';
 
 const Tab = createBottomTabNavigator();
 const StocksStack = createNativeStackNavigator<StocksStackParamList>();
 
 function StocksTab() {
+  const { tokens } = useTheme();
+
   return (
-    <StocksStack.Navigator>
+    <StocksStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: tokens.colors.brand.navy[900],
+        },
+        headerTitleStyle: {
+          color: tokens.colors.text.primary,
+          fontFamily: tokens.typography.title.fontFamily,
+          fontSize: tokens.typography.title.fontSize,
+          fontWeight: '600',
+        },
+        headerTintColor: tokens.colors.text.primary,
+      }}
+    >
       <StocksStack.Screen
         name="StocksList"
         component={StocksScreen}
@@ -19,8 +35,9 @@ function StocksTab() {
       />
       <StocksStack.Screen
         name="StockChart"
-        component={StockChartScreen}
-        options={{ title: 'Chart' }}
+        // eslint-disable-next-line @typescript-eslint/no-var-requires -- React Navigation getComponent expects a sync loader.
+        getComponent={() => require('../screens/StockChartScreen').StockChartScreen}
+        options={{ headerShown: false }}
       />
     </StocksStack.Navigator>
   );
@@ -31,11 +48,45 @@ function StocksTab() {
  * Stocks + Alerts content, with the notifications/settings shell.
  */
 export function MainTabs() {
+  const { tokens } = useTheme();
+
   return (
-    <Tab.Navigator>
-      <Tab.Screen name="Stocks" component={StocksTab} />
-      <Tab.Screen name="Alerts" component={AlertsScreen} />
-      <Tab.Screen name="Notifications" component={NotificationsSettingsScreen} />
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: tokens.colors.brand.coral[500],
+        tabBarInactiveTintColor: tokens.colors.neutral[300],
+        tabBarStyle: {
+          backgroundColor: tokens.colors.brand.navy[900],
+          borderTopColor: tokens.colors.neutral[700],
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Stocks"
+        component={StocksTab}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trending-up" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Alerts"
+        component={AlertsStack}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileStack}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }

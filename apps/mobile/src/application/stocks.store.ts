@@ -21,6 +21,7 @@ export interface StocksState {
   chartRange: ChartRange;
   chartIsLoading: boolean;
   chartError: string | null;
+  chartCache: Record<string, StockChartPoint[]>;
   loadChart: (symbol: string, range: ChartRange) => Promise<void>;
 }
 
@@ -36,6 +37,7 @@ export function createStocksStore(
   const syncSuccessState = (items: StockListing[]) => {
     const savedAt = now();
     snapshotStorage.set({ items, savedAt });
+    snapshotStorage.appendHistory(items, savedAt);
 
     return {
       items,
@@ -64,6 +66,48 @@ export function createStocksStore(
       lastUpdatedAt: null,
       error: loadError.message,
     };
+  };
+
+  const rangeToWindowMs = (range: ChartRange): number => {
+    switch (range) {
+      case '1D':
+        return 24 * 60 * 60 * 1000;
+      case '1W':
+        return 7 * 24 * 60 * 60 * 1000;
+      case '1M':
+        return 30 * 24 * 60 * 60 * 1000;
+      case '3M':
+        return 90 * 24 * 60 * 60 * 1000;
+      case '1Y':
+        return 365 * 24 * 60 * 60 * 1000;
+      default:
+        return 24 * 60 * 60 * 1000;
+    }
+  };
+
+  const buildChartFromHistory = (symbol: string, range: ChartRange): StockChartPoint[] => {
+    const history = snapshotStorage.getHistory(symbol);
+    if (history.length === 0) return [];
+
+    const cutoff = Date.now() - rangeToWindowMs(range);
+    const filtered = history.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+    const source = filtered.length > 1 ? filtered : history;
+
+    return source.map((point, index, arr) => {
+      const prev = arr[index - 1]?.price ?? point.price;
+      const open = prev;
+      const close = point.price;
+      const high = Math.max(open, close);
+      const low = Math.min(open, close);
+
+      return {
+        timestamp: point.timestamp,
+        open,
+        high,
+        low,
+        close,
+      };
+    });
   };
 
   return create<StocksState>()((set, get) => ({
@@ -100,12 +144,14 @@ export function createStocksStore(
     // ---- chart slice ----
     chartData: [],
     chartSymbol: null,
-    chartRange: '1W',
+    chartRange: '1D',
     chartIsLoading: false,
     chartError: null,
+    chartCache: {},
 
     loadChart: async (symbol: string, range: ChartRange) => {
       set({ chartSymbol: symbol, chartRange: range, chartIsLoading: true, chartError: null });
+      const cacheKey = `${symbol}:${range}`;
 
       try {
         const data = await stocksRepo.chart(symbol, range);
@@ -116,7 +162,15 @@ export function createStocksStore(
           return;
         }
 
-        set({ chartData: data, chartIsLoading: false, chartError: null });
+        set((state) => ({
+          chartData: data,
+          chartIsLoading: false,
+          chartError: null,
+          chartCache: {
+            ...state.chartCache,
+            [cacheKey]: data,
+          },
+        }));
       } catch (error) {
         // Discard stale error responses too
         if (get().chartRange !== range || get().chartSymbol !== symbol) {
@@ -124,7 +178,13 @@ export function createStocksStore(
         }
 
         const chartError = StockChartError.fromUnknown(error);
-        set({ chartData: [], chartIsLoading: false, chartError: chartError.message });
+        const derivedChart = buildChartFromHistory(symbol, range);
+        const cachedData = get().chartCache[cacheKey] ?? [];
+        set({
+          chartData: cachedData.length > 0 ? cachedData : derivedChart,
+          chartIsLoading: false,
+          chartError: chartError.message,
+        });
       }
     },
   }));

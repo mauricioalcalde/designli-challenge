@@ -13,7 +13,7 @@ export function createApiClient(
   tokenStorage: TokenStorage,
   onLoggedOut: () => void,
 ): AxiosInstance {
-  const client = axios.create({ baseURL });
+  const client = axios.create({ baseURL, timeout: 10000 });
 
   // Request interceptor: inject Bearer token from sync storage
   client.interceptors.request.use((config) => {

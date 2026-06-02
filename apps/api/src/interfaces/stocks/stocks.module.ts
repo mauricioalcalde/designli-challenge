@@ -7,6 +7,15 @@ import { FinnhubStockProvider } from '../../infrastructure/stocks/finnhub-stock.
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
 import { AuthModule } from '../auth/auth.module';
 
+function createFinnhubProvider() {
+  const apiKey = process.env['FINNHUB_API_KEY'];
+  if (!apiKey) {
+    throw new Error('FINNHUB_API_KEY environment variable is required for stock data');
+  }
+
+  return new FinnhubStockProvider(apiKey);
+}
+
 @Module({
   imports: [AuthModule],
   controllers: [StocksController],
@@ -16,17 +25,12 @@ import { AuthModule } from '../auth/auth.module';
     {
       provide: IStockProvider,
       useFactory: () => {
-        const provider = process.env['STOCK_PROVIDER'] ?? 'mock';
-        if (provider === 'finnhub') {
-          const apiKey = process.env['FINNHUB_API_KEY'];
-          if (!apiKey) {
-            throw new Error(
-              'FINNHUB_API_KEY environment variable is required when STOCK_PROVIDER=finnhub',
-            );
-          }
-          return new FinnhubStockProvider(apiKey);
+        const provider = process.env['STOCK_PROVIDER'] ?? 'finnhub';
+        if (provider === 'mock') {
+          return new MockStockProvider();
         }
-        return new MockStockProvider();
+
+        return createFinnhubProvider();
       },
     },
   ],
