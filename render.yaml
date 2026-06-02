@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: designli-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @designli-challenge/shared build && pnpm --filter @designli-challenge/api prisma:generate && pnpm --filter @designli-challenge/api build
+    startCommand: cd apps/api && pnpm start:prod
+    envVars:
+      - key: NODE_VERSION
+        value: '20.18.0'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        value: 'file:./dev.db'
+    healthCheckPath: /
