@@ -42,5 +42,8 @@
     "*.{json,yaml,md}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "expo-modules-core": "2.2.3"
   }
 }

@@ -41,7 +41,12 @@ packages/shared/dist/
 docs/
 CHALLENGE-CHECKLIST.md
 *.pdf
-openspec/changes/
+openspec/
+opencode.json
+.npmrc
+
+# Firebase credentials
+*-firebase-adminsdk-*.json
 
 # Mobile build outputs
 dist-*/

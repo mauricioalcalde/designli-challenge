@@ -25,3 +25,5 @@ const API_PORT = process.env.EXPO_PUBLIC_API_PORT ?? '3000';
 const API_HOST = process.env.EXPO_PUBLIC_API_HOST ?? DEV_HOST;
 
 export const API_BASE_URL = PRODUCTION_URL ?? `http://${API_HOST}:${API_PORT}`;
+
+console.log('[ENV] API_BASE_URL:', API_BASE_URL);

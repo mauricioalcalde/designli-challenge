@@ -1,21 +1,25 @@
-import type { AxiosInstance } from 'axios';
 import type { StockListing, StockChartPoint, ChartRange } from '@designli-challenge/shared';
 import { StocksRepository } from '../domain/stocks.repository.port';
 import { StocksLoadError, StockChartError } from '../domain/stocks.errors';
+import { apiFetch } from './apiFetch';
+import type { TokenStorage } from '../domain/token-storage.port';
 
 /**
  * HTTP implementation of StocksRepository.
- * Uses the pre-configured authenticated Axios client.
+ * Uses native fetch through apiFetch wrapper.
  */
 export class StocksApi extends StocksRepository {
-  constructor(private readonly client: AxiosInstance) {
+  constructor(private readonly tokenStorage: TokenStorage) {
     super();
   }
 
   async list(): Promise<StockListing[]> {
     try {
-      const { data } = await this.client.get<StockListing[]>('/stocks');
-      return data;
+      const token = this.tokenStorage.get();
+      return await apiFetch<StockListing[]>('/stocks', {
+        method: 'GET',
+        token,
+      });
     } catch (error) {
       throw StocksLoadError.fromUnknown(error);
     }
@@ -23,11 +27,14 @@ export class StocksApi extends StocksRepository {
 
   async chart(symbol: string, range: ChartRange): Promise<StockChartPoint[]> {
     try {
-      const { data } = await this.client.get<StockChartPoint[]>(
-        `/stocks/${encodeURIComponent(symbol)}/chart`,
-        { params: { range } },
+      const token = this.tokenStorage.get();
+      return await apiFetch<StockChartPoint[]>(
+        `/stocks/${encodeURIComponent(symbol)}/chart?range=${range}`,
+        {
+          method: 'GET',
+          token,
+        },
       );
-      return data;
     } catch (error) {
       throw StockChartError.fromUnknown(error);
     }
